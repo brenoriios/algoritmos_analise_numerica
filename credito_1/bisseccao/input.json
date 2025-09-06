@@ -1,0 +1,14 @@
+{
+    "function": {
+        "expression": "0.25 * (x - 2) + 0.1 * sin(x)",
+        "variable": "x"
+    },
+    "interval": {
+        "start": 1,
+        "end": 2
+    },
+    "stop_condition": {
+        "error": 0.00001,
+        "interval_size": 0.00001
+    }
+}
