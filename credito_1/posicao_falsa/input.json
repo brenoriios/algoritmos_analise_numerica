@@ -8,6 +8,7 @@
         "end": 2
     },
     "stop_condition": {
-        "error": 0.000000001
+        "error": 0.00001,
+        "interval_size": 0.00001
     }
 }

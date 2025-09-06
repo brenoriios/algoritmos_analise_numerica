@@ -78,7 +78,7 @@ def get_out_file(file_path: str):
 def solve_function(function: Function, variable_value: Decimal):
     symp_expression = sympify(function.expression)
     symp_variable = symbols(function.variable)
-
+    
     return N(symp_expression.evalf(subs={symp_variable: variable_value}))
 
 def solve_for_interval(function: Function, interval: Interval, stop_condition: StopCondition, iteration: int):
@@ -87,30 +87,31 @@ def solve_for_interval(function: Function, interval: Interval, stop_condition: S
 
     solution_interval_end = solve_function(function, interval.end)
     solution_interval_start = solve_function(function, interval.start)
+    
+    interval_section = ((interval.start * solution_interval_end) - (interval.end * solution_interval_start)) / (solution_interval_end - solution_interval_start)
+    
+    solution_interval_section = solve_function(function, interval_section)
 
-    interval_middle = (interval.end + interval.start) / 2
-    solution_interval_middle = solve_function(function, interval_middle)
-
-    signal_change_for_start = (solution_interval_start * solution_interval_middle) < 0
-    signal_change_for_end = (solution_interval_end * solution_interval_middle) < 0
+    signal_change_for_start = (solution_interval_start * solution_interval_section) < 0
+    signal_change_for_end = (solution_interval_end * solution_interval_section) < 0
 
     if not signal_change_for_start and not signal_change_for_end:
         raise SolutionException('Não houve mudança de sinais, não é possível encontrar uma solução!')
     
-    if signal_change_for_start: new_interval = Interval(interval.start, interval_middle)
-    if signal_change_for_end: new_interval = Interval(interval_middle, interval.end)
+    if signal_change_for_start: new_interval = Interval(interval.start, interval_section)
+    if signal_change_for_end: new_interval = Interval(interval_section, interval.end)
 
-    OUTPUT_FILE.write(f'{iteration};{interval.start:.9f};{interval.end:.9f};{solution_interval_start:.9f};{solution_interval_end:.9f};{interval_middle:.9f};{solution_interval_middle:.9f} \n'.replace('.', ','))
+    OUTPUT_FILE.write(f'{iteration};{interval.start:.9f};{interval.end:.9f};{solution_interval_start:.9f};{solution_interval_end:.9f};{interval_section:.9f};{solution_interval_section:.9f} \n'.replace('.', ','))
 
     if(stop_condition.type == StopConditionType.ERROR):
-        condition_value = abs(solution_interval_middle)
+        condition_value = abs(solution_interval_section)
     elif(stop_condition.type == StopConditionType.INTERVALSIZE):
         condition_value = new_interval.end - new_interval.start
 
-    return Solution(new_interval, interval_middle, condition_value)
+    return Solution(new_interval, interval_section, condition_value)
 
-def bissection_solve(function: Function, interval: Interval, stop_condition: StopCondition):
-    OUTPUT_FILE.write('#;a;b;f(a);f(b);c = (b - a) / 2;f(c)\n')
+def false_position_solve(function: Function, interval: Interval, stop_condition: StopCondition):
+    OUTPUT_FILE.write('#;a;b;f(a);f(b);c;f(c)\n')
     if((interval.end - interval.start) == 0):
         return solve_function(function, interval.end)
     
@@ -131,11 +132,11 @@ if __name__ == '__main__':
     data = get_data_from_json(INPUT_PATH)
     
     try:
-        solution = bissection_solve(data.function, data.interval, data.stop_condition)
+        solution = false_position_solve(data.function, data.interval, data.stop_condition)
         print(f"Solução: {round(solution, 9)}")
     except SolutionException as ex:
         print(ex)
-    except Exception as e:
-        print(f'Erro ao solucionar o problema: {e}')
+    except Exception:
+        print('Erro ao solucionar o problema.')
     
     OUTPUT_FILE.close()
