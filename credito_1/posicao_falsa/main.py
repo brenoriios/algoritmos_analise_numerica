@@ -32,7 +32,7 @@ class InputData:
     interval: Interval
     stop_condition: StopCondition
     
-    def __init__(self, function: Function, interval: Interval, stop_condition):
+    def __init__(self, function: Function, interval: Interval, stop_condition: StopCondition):
         self.function = function
         self.interval = interval
         self.stop_condition = stop_condition
@@ -42,8 +42,8 @@ class InputData:
     
 @dataclass
 class Solution:
-    interval: Interval
-    value: Decimal
+    next_interval: Interval
+    point: Decimal
     error: Decimal
 
 class SolutionException(Exception):
@@ -81,7 +81,7 @@ def solve_function(function: Function, variable_value: Decimal):
     
     return N(symp_expression.evalf(subs={symp_variable: variable_value}))
 
-def solve_for_interval(function: Function, interval: Interval, stop_condition: StopCondition, iteration: int):
+def solve_for_pf(function: Function, interval: Interval, stop_condition: StopCondition, iteration: int):
     if (interval.end - interval.start) < 0:
         raise SolutionException('Intervalo Inválido')
 
@@ -116,13 +116,13 @@ def false_position_solve(function: Function, interval: Interval, stop_condition:
         return solve_function(function, interval.end)
     
     iteration = 1
-    solution: Solution = solve_for_interval(function, interval, stop_condition, iteration)
+    solution: Solution = solve_for_pf(function, interval, stop_condition, iteration)
     
     while((abs(solution.error) > stop_condition.value) and iteration <= 9999):
         iteration += 1
-        solution = solve_for_interval(function, solution.interval, stop_condition, iteration)
+        solution = solve_for_pf(function, solution.next_interval, stop_condition, iteration)
     
-    return solution.value
+    return solution.point
 
 INPUT_PATH = 'input.json'
 OUTPUT_PATH = 'output.csv'
