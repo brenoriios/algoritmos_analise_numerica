@@ -128,9 +128,9 @@ OUTPUT_PATH = 'output.csv'
 OUTPUT_FILE = get_out_file(OUTPUT_PATH)
 
 if __name__ == '__main__':
-    data = get_data_from_json(INPUT_PATH)
     
     try:
+        data = get_data_from_json(INPUT_PATH)
         solution = bissection_solve(data.function, data.interval, data.stop_condition)
         print(f"Solução: {round(solution, 9)}")
     except SolutionException as ex:

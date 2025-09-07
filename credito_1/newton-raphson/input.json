@@ -1,0 +1,11 @@
+{
+    "function": {
+        "expression": "x^2 + x - 6",
+        "differential": "2*x + 1",
+        "variable": "x"
+    },
+    "starting_point": 1,
+    "stop_condition": {
+        "error": 0.00001
+    }
+}
