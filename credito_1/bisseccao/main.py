@@ -61,7 +61,7 @@ def get_data_from_json(file_path: str):
     elif('interval_size' in data['stop_condition']):
         stop_condition = StopCondition(StopConditionType.INTERVALSIZE, Decimal(str(data['stop_condition']['interval_size'])))
     else:
-        raise(SolutionException('Forneça uma condição de parada no arquivo de entrada. Valores aceitos: "error" ou "interval_size"'))
+        raise(KeyError('Forneça uma condição de parada no arquivo de entrada. Valores aceitos: "error" ou "interval_size"'))
 
     return InputData(
         Function(data['function']['expression'], data['function']['variable']), 
@@ -135,6 +135,8 @@ if __name__ == '__main__':
         print(f"Solução: {round(solution, 9)}")
     except SolutionException as ex:
         print(ex)
+    except KeyError as e:
+        print(f"Formato de entrada inválido. Chave faltando: {e}")
     except Exception as e:
         print(f'Erro ao solucionar o problema: {e}')
     
