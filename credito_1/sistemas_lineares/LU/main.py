@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from io import TextIOWrapper
 import os
+import traceback
 from sympy import Eq, solve, sympify, symbols, N
 import json
 from decimal import Decimal, getcontext
@@ -41,9 +42,9 @@ def print_matrix(data: MatrixData):
     for line_index in range(len(data.matrix)):
         line_parts = ['|']
         for column in data.matrix[line_index]:
-            line_parts.append('{:.5f}'.format(column))
+            line_parts.append(str(column))
 
-        line_parts.extend(['|', data.variables[line_index], '|', '=', '{:.5f}'.format(data.results[line_index])])
+        line_parts.extend(['|', data.variables[line_index], '|', '=', str(data.results[line_index])])
 
         print(' '.join(line_parts))
         
@@ -131,30 +132,75 @@ def get_diagonal_matrix(input_data: MatrixData):
     if(invalid_matrix):
         raise(SolutionException(f'Erro: {invalid_matrix}'))
 
-    data = copy.deepcopy(input_data)
+    matrix = input_data.matrix
+    upper_matrix = clear_matrix(copy.deepcopy(input_data))
+    lower_matrix = clear_matrix(copy.deepcopy(input_data))
 
-    for iteration_line_index in range(1, len(data.matrix)):
-        for line_index in range(iteration_line_index, len(data.matrix)):
-            m = data.matrix[line_index][iteration_line_index - 1] / data.matrix[iteration_line_index - 1][iteration_line_index - 1]
-            data.matrix[line_index][iteration_line_index - 1] = 0
+    upper_matrix.matrix[0] = matrix[0]
 
-            for column_index in range(iteration_line_index, len(data.matrix[iteration_line_index])):
-                data.matrix[line_index][column_index] = data.matrix[line_index][column_index] - (m * data.matrix[iteration_line_index - 1][column_index])
+    for line_index in range(len(lower_matrix.matrix)):
+        lower_matrix.matrix[line_index][0] = matrix[line_index][0] / matrix[0][0]
+
+    for line_index in range(len(matrix)):
+        for column_index in range(len(matrix[line_index])):
+            if line_index == column_index:
+                lower_matrix.matrix[line_index][column_index] = 1
             
-            data.results[line_index] = data.results[line_index] - (m * data.results[iteration_line_index - 1])
+            if line_index <= column_index:
+                upper_matrix.matrix[line_index][column_index] = calc_upper_value(matrix, upper_matrix.matrix, lower_matrix.matrix, line_index, column_index)
+            else:
+                lower_matrix.matrix[line_index][column_index] = calc_lower_value(matrix, upper_matrix.matrix, lower_matrix.matrix, line_index, column_index)
+
+
+    # for iteration_line_index in range(1, len(upper_matrix.matrix)):
+    #         m = upper_matrix.matrix[line_index][iteration_line_index - 1] / upper_matrix.matrix[iteration_line_index - 1][iteration_line_index - 1]
+    #         upper_matrix.matrix[line_index][iteration_line_index - 1] = 0
+
+    #             upper_matrix.matrix[line_index][column_index] = upper_matrix.matrix[line_index][column_index] - (m * upper_matrix.matrix[iteration_line_index - 1][column_index])
+            
+    #         upper_matrix.results[line_index] = upper_matrix.results[line_index] - (m * upper_matrix.results[iteration_line_index - 1])
     
-    return data
+    print_matrix(upper_matrix)
+    print('----------------')
+    print_matrix(lower_matrix)
+    
+    return upper_matrix
+
+def calc_upper_value(matrix: list[list[float]], upper: list[list[float]], lower: list[list[float]], line_index: int, column_index: int):
+    sum = 0
+
+    for k in range(1, (line_index - 1)):
+        sum += lower[line_index][k] * upper[k][column_index]
+    
+    return matrix[line_index][column_index] - sum
+
+def calc_lower_value(matrix: list[list[float]], upper: list[list[float]], lower: list[list[float]], line_index: int, column_index: int):
+    sum = 0
+
+    for k in range(1, (column_index - 1)):
+        sum += lower[line_index][k] * upper[k][column_index]
+    
+    return (matrix[line_index][column_index] - sum) / upper[column_index][column_index]
+
+def clear_matrix(matrix_data: MatrixData):
+    for line_index in range(len(matrix_data.matrix)):
+        for column_index in range(len(matrix_data.matrix[line_index])):
+            matrix_data.matrix[line_index][column_index] = 0
+    
+        matrix_data.results[line_index] = 0
+    
+    return matrix_data
 
 def gauss_solve(data: MatrixData):
     diagonal_matrix = get_diagonal_matrix(data)
-    solution = solve_matrix(diagonal_matrix)
+    # solution = solve_matrix(diagonal_matrix)
 
-    OUTPUT_FILE.write("Matriz Original\n")
-    write_matrix(data, OUTPUT_FILE)
-    OUTPUT_FILE.write("\nMatriz Diagonal\n")
-    write_matrix(diagonal_matrix, OUTPUT_FILE)
-    OUTPUT_FILE.write("\nSolução\n")
-    write_dict(solution, OUTPUT_FILE)
+    # OUTPUT_FILE.write("Matriz Original\n")
+    # write_matrix(data, OUTPUT_FILE)
+    # OUTPUT_FILE.write("\nMatriz Diagonal\n")
+    # write_matrix(diagonal_matrix, OUTPUT_FILE)
+    # OUTPUT_FILE.write("\nSolução\n")
+    # write_dict(solution, OUTPUT_FILE)
 
 INPUT_PATH = 'input.json'
 OUTPUT_PATH = 'output.txt'
@@ -170,5 +216,6 @@ if __name__ == '__main__':
         print(f"Formato de entrada inválido. Chave faltando: {e}")
     except Exception as e:
         print(f'Erro ao solucionar o problema: {e}')
+        traceback.print_exc()
     
     OUTPUT_FILE.close()
