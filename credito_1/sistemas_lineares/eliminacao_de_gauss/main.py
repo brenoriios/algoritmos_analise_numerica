@@ -37,25 +37,36 @@ def get_out_file(file_path: str):
 
     return file
 
-def print_matrix(data: MatrixData):
+def print_matrix(data: MatrixData, only_matrix: bool = False):
     for line_index in range(len(data.matrix)):
         line_parts = ['|']
         for column in data.matrix[line_index]:
-            line_parts.append('{:.5f}'.format(column))
+            line_parts.append(format_value(column))
 
-        line_parts.extend(['|', data.variables[line_index], '|', '=', '{:.5f}'.format(data.results[line_index])])
+        line_parts.append('|')
+        
+        if not only_matrix:
+            line_parts.extend([data.variables[line_index], '|', '=', format_value(Decimal(data.results[line_index]))])
 
         print(' '.join(line_parts))
         
-def write_matrix(data: MatrixData, file: TextIOWrapper):
+def write_matrix(data: MatrixData, file: TextIOWrapper, only_matrix: bool = False):
     for line_index in range(len(data.matrix)):
         line_parts = ['|']
         for column in data.matrix[line_index]:
-            line_parts.append('{:.5f}'.format(column))
+            line_parts.append(format_value(column))
 
-        line_parts.extend(['|', data.variables[line_index], '|', '=', '{:.5f}'.format(data.results[line_index]), '\n'])
+        line_parts.append('|')
+        
+        if not only_matrix:
+            line_parts.extend([data.variables[line_index], '|', '=', format_value(Decimal(data.results[line_index]))])
 
-        file.write(' '.join(line_parts))
+        file.write(f'{' '.join(line_parts)}\n')
+
+def format_value(value: Decimal):
+    integer_part_digits_count = len(str(int(value)))
+
+    return f'{value:>{15 if integer_part_digits_count < 15 else integer_part_digits_count}.10f}'
 
 def write_dict(dictionary: dict, file: TextIOWrapper):
     for key, value in dictionary.items():
