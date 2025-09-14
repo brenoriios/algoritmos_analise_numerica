@@ -80,21 +80,19 @@ def reverse_dict(dictionary: dict):
 
     return reversed_dictionary
 
-def solve_for_gseidel(data: SystemData, values: dict[str, Decimal]):
+def solve_for_jacobi(data: SystemData, values: dict[str, Decimal]):
     solution: dict[str, Decimal] = {}
-    updated_values = copy.deepcopy(values)
 
     for i in range(len(data.expressions)):
-        filtered_values = copy.deepcopy(updated_values)
+        filtered_values = copy.deepcopy(values)
         expression = data.expressions[i]
         variable = data.variables[i]
         filtered_values.pop(variable)
         solution[variable] = solve_function(expression, filtered_values)[0]
-        updated_values[variable] = solution[variable]
     
     return solution
 
-def gseidel_solve(data: InputData):
+def jacobi_solve(data: InputData):
     old_values: dict[str, Decimal] = dict(zip(data.variables, data.initial_values))
     values = old_values
     system: SystemData = SystemData(data.system, data.variables)
@@ -105,7 +103,7 @@ def gseidel_solve(data: InputData):
     write_dict(old_values, OUTPUT_FILE)
     iteration = 1
     while((max(abs_variation) > data.tolerated_variation or max(rel_variation) > data.tolerated_variation and iteration <= MAX_ITERATIONS)):
-        values = solve_for_gseidel(system, values)
+        values = solve_for_jacobi(system, values)
         abs_variation = calc_abs_variation(old_values, values)
         rel_variation = calc_rel_variation(old_values, values)
         old_values = values
@@ -127,7 +125,7 @@ def gseidel_solve(data: InputData):
         OUTPUT_FILE.write(f'\nNão foi possível convergir em {MAX_ITERATIONS} iterações\n')
     else:
         OUTPUT_FILE.write(f'\nVariação menor do que a tolerada, resultado encontrado na iteração {iteration - 1}\n')    
-
+    
 def calc_abs_variation(old_solution: dict[str, Decimal], current_solution: dict[str, Decimal]):
     return [abs(old_solution[key] - current_solution[key]) for key in current_solution.keys()]
 
@@ -144,7 +142,7 @@ MAX_ITERATIONS = 9999
 if __name__ == '__main__':
     try:
         data = get_data_from_json(INPUT_PATH)
-        solution = gseidel_solve(data)
+        solution = jacobi_solve(data)
     except SolutionException as ex:
         print(ex)
     except KeyError as e:
