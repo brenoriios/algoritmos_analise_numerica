@@ -248,6 +248,5 @@ if __name__ == '__main__':
         print(f"Formato de entrada inválido. Chave faltando: {e}")
     except Exception as e:
         print(f'Erro ao solucionar o problema: {e}')
-        traceback.print_exc()
     
     OUTPUT_FILE.close()
