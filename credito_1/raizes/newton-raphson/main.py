@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 import os
+import traceback
 from sympy import sympify, symbols, N
 import json
 from decimal import Decimal, getcontext
@@ -70,26 +71,29 @@ def solve_function(function: Function, variable_value: Decimal):
     symp_expression = sympify(function.expression)
     symp_variable = symbols(function.variable)
     
-    return N(symp_expression.evalf(subs={symp_variable: variable_value}))
+    return Decimal(str(N(symp_expression.evalf(subs={symp_variable: variable_value}))))
 
 def solve_differential(function: Function, variable_value: Decimal):
     symp_expression = sympify(function.differential)
     symp_variable = symbols(function.variable)
     
-    return N(symp_expression.evalf(subs={symp_variable: variable_value}))
+    return Decimal(str(N(symp_expression.evalf(subs={symp_variable: variable_value}))))
 
 def solve_for_nr(function: Function, value: Decimal, iteration: int):
     solution_for_function = solve_function(function, value)
     solution_for_differential = solve_differential(function, value)
 
-    next_value = value - (solution_for_function / solution_for_differential)
+    if solution_for_differential == 0:
+        raise SolutionException("Não é possível dividir por 0")
 
-    OUTPUT_FILE.write(f'{iteration};{value:.9f};{solution_for_function:.9f};{solution_for_differential:.9f};{next_value:.9f} \n'.replace('.', ','))
+    next_value = Decimal(value - (solution_for_function / solution_for_differential))
 
-    return Solution(value, next_value, abs(next_value - value))
+    OUTPUT_FILE.write(f'{iteration};{value:.15f};{solution_for_function:.15f};{solution_for_differential:.15f};{next_value:.15f};{abs(next_value - value):.15f} \n'.replace('.', ','))
+
+    return Solution(value, next_value, Decimal(abs(next_value - value)))
 
 def newton_raphson_solve(function: Function, starting_point: Decimal, stop_condition: StopCondition):
-    OUTPUT_FILE.write('#;x;f(x);f\'(x);x - (f(x) / f\'(x)) \n')
+    OUTPUT_FILE.write('#;x;f(x);f\'(x);x[k+1] = x - (f(x) / f\'(x));x[k+1] - x[k] \n')
     
     iteration = 1
     solution: Solution = solve_for_nr(function, starting_point, iteration)
@@ -97,6 +101,9 @@ def newton_raphson_solve(function: Function, starting_point: Decimal, stop_condi
     while((abs(solution.error) > stop_condition.value) and iteration <= 9999):
         iteration += 1
         solution = solve_for_nr(function, solution.next_point, iteration)
+    
+    if iteration > 9999:
+        raise SolutionException("Não foi possível encontrar um resultado em 9999 iterações")
     
     return solution.point
 
@@ -109,7 +116,7 @@ if __name__ == '__main__':
     try:
         data = get_data_from_json(INPUT_PATH)
         solution = newton_raphson_solve(data.function, data.starting_point, data.stop_condition)
-        print(f"Solução: {round(solution, getcontext().prec)}")
+        print(f"Solução encontrada e escrita no arquivo {OUTPUT_PATH}")
     except SolutionException as ex:
         print(ex)
     except KeyError as e:

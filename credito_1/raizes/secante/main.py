@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 import os
+import traceback
 from sympy import sympify, symbols, N
 import json
 from decimal import Decimal, getcontext
@@ -73,30 +74,30 @@ def solve_function(function: Function, variable_value: Decimal):
     symp_expression = sympify(function.expression)
     symp_variable = symbols(function.variable)
     
-    return N(symp_expression.evalf(subs={symp_variable: variable_value}))
+    return Decimal(str(N(symp_expression.evalf(subs={symp_variable: variable_value}))))
 
 def solve_differential(function: Function, variable_value: Decimal):
     symp_expression = sympify(function.differential)
     symp_variable = symbols(function.variable)
     
-    return N(symp_expression.evalf(subs={symp_variable: variable_value}))
+    return Decimal(str(N(symp_expression.evalf(subs={symp_variable: variable_value}))))
 
 def solve_for_nr(function: Function, point: Decimal, previous_solution_for_function: Decimal, previous_point: Decimal, iteration: int):
     solution_for_function = solve_function(function, point)
 
-    next_point = ((solution_for_function * previous_point) - (previous_solution_for_function * point)) / (solution_for_function - previous_solution_for_function)
+    next_point = Decimal((solution_for_function * previous_point) - (previous_solution_for_function * point)) / (solution_for_function - previous_solution_for_function)
 
-    OUTPUT_FILE.write(f'{iteration};{point:.50f};{solution_for_function:.50f};{previous_solution_for_function:.50f};{next_point:.50f} \n'.replace('.', ','))
+    OUTPUT_FILE.write(f'{iteration};{point:.15f};{solution_for_function:.15f};{previous_solution_for_function:.15f};{next_point:.15f};{abs(next_point - point):.15f} \n'.replace('.', ','))
 
     return Solution(solution_for_function, next_point, abs(next_point - point))
 
 def newton_raphson_solve(function: Function, x0: Decimal, x1: Decimal, stop_condition: StopCondition):
-    OUTPUT_FILE.write('#;x[k];f(x[k]);f(x[k-1]);x[k+1] \n')
+    OUTPUT_FILE.write('#;x[k];f(x[k]);f(x[k-1]);x[k+1];x[k+1] - x[k] \n')
     
     previous_point = x0
     previous_solution: Solution = solve_function(function, previous_point)
     point = x1
-    OUTPUT_FILE.write(f'1;{previous_point:.50f};{previous_solution:.50f}; - ;{point:.50f} \n'.replace('.', ','))
+    OUTPUT_FILE.write(f'1;{previous_point:.15f};{previous_solution:.15f}; - ;{point:.15f};{abs(point - previous_point):.15f} \n'.replace('.', ','))
 
     iteration = 2
     solution: Solution = solve_for_nr(function, point, previous_solution, previous_point, iteration)
@@ -107,6 +108,9 @@ def newton_raphson_solve(function: Function, x0: Decimal, x1: Decimal, stop_cond
         previous_solution = solution.value
         point = solution.next_point
         solution = solve_for_nr(function, point, previous_solution, previous_point, iteration)
+    
+    if iteration > 9999:
+        raise SolutionException("Não foi possível encontrar um resultado em 9999 iterações")
     
     return previous_point
 
@@ -119,7 +123,7 @@ if __name__ == '__main__':
     try:
         data = get_data_from_json(INPUT_PATH)
         solution = newton_raphson_solve(data.function, data.x0, data.x1, data.stop_condition)
-        print(f"Solução: {round(solution, getcontext().prec)}")
+        print(f"Solução encontrada e escrita no arquivo {OUTPUT_PATH}")
     except SolutionException as ex:
         print(ex)
     except KeyError as e:

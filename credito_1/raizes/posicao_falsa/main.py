@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 import os
+import traceback
 from sympy import sympify, symbols, N
 import json
 from decimal import Decimal, getcontext
@@ -57,15 +58,15 @@ def get_data_from_json(file_path: str):
         data = json.load(json_file)
 
     if('error' in data['stop_condition']):
-        stop_condition = StopCondition(StopConditionType.ERROR, Decimal(str(data['stop_condition']['error'])))
+        stop_condition = StopCondition(StopConditionType.ERROR, Decimal(data['stop_condition']['error']))
     elif('interval_size' in data['stop_condition']):
-        stop_condition = StopCondition(StopConditionType.INTERVALSIZE, Decimal(str(data['stop_condition']['interval_size'])))
+        stop_condition = StopCondition(StopConditionType.INTERVALSIZE, Decimal(data['stop_condition']['interval_size']))
     else:
         raise(KeyError('Forneça uma condição de parada no arquivo de entrada. Valores aceitos: "error" ou "interval_size"'))
 
     return InputData(
         Function(data['function']['expression'], data['function']['variable']), 
-        Interval(Decimal(str(data['interval']['start'])), Decimal(str(data['interval']['end']))),
+        Interval(Decimal(data['interval']['start']), Decimal(data['interval']['end'])),
         stop_condition
     )
 
@@ -79,7 +80,7 @@ def solve_function(function: Function, variable_value: Decimal):
     symp_expression = sympify(function.expression)
     symp_variable = symbols(function.variable)
     
-    return N(symp_expression.evalf(subs={symp_variable: variable_value}))
+    return Decimal(str(N(symp_expression.evalf(subs={symp_variable: variable_value}))))
 
 def solve_for_pf(function: Function, interval: Interval, stop_condition: StopCondition, iteration: int):
     if (interval.end - interval.start) < 0:
@@ -88,7 +89,7 @@ def solve_for_pf(function: Function, interval: Interval, stop_condition: StopCon
     solution_interval_end = solve_function(function, interval.end)
     solution_interval_start = solve_function(function, interval.start)
     
-    interval_section = ((interval.start * solution_interval_end) - (interval.end * solution_interval_start)) / (solution_interval_end - solution_interval_start)
+    interval_section = Decimal(((interval.start * solution_interval_end) - (interval.end * solution_interval_start)) / (solution_interval_end - solution_interval_start))
     
     solution_interval_section = solve_function(function, interval_section)
 
@@ -101,12 +102,12 @@ def solve_for_pf(function: Function, interval: Interval, stop_condition: StopCon
     if signal_change_for_start: new_interval = Interval(interval.start, interval_section)
     if signal_change_for_end: new_interval = Interval(interval_section, interval.end)
 
-    OUTPUT_FILE.write(f'{iteration};{interval.start:.9f};{interval.end:.9f};{solution_interval_start:.9f};{solution_interval_end:.9f};{interval_section:.9f};{solution_interval_section:.9f} \n'.replace('.', ','))
+    OUTPUT_FILE.write(f'{iteration};{new_interval.start:.15f};{new_interval.end:.15f};{solution_interval_start:.15f};{solution_interval_end:.15f};{interval_section:.15f};{solution_interval_section:.15f} \n'.replace('.', ','))
 
     if(stop_condition.type == StopConditionType.ERROR):
         condition_value = abs(solution_interval_section)
     elif(stop_condition.type == StopConditionType.INTERVALSIZE):
-        condition_value = new_interval.end - new_interval.start
+        condition_value = abs(new_interval.end - new_interval.start)
 
     return Solution(new_interval, interval_section, condition_value)
 
@@ -118,10 +119,13 @@ def false_position_solve(function: Function, interval: Interval, stop_condition:
     iteration = 1
     solution: Solution = solve_for_pf(function, interval, stop_condition, iteration)
     
-    while((abs(solution.error) > stop_condition.value) and iteration <= 9999):
+    while((abs(solution.error) > abs(stop_condition.value)) and iteration <= 9999):
         iteration += 1
         solution = solve_for_pf(function, solution.next_interval, stop_condition, iteration)
-    
+
+    if iteration > 9999:
+        raise SolutionException("Não foi possível encontrar um resultado em 9999 iterações")
+
     return solution.point
 
 INPUT_PATH = 'input.json'
@@ -133,7 +137,7 @@ if __name__ == '__main__':
     try:
         data = get_data_from_json(INPUT_PATH)
         solution = false_position_solve(data.function, data.interval, data.stop_condition)
-        print(f"Solução: {round(solution, 9)}")
+        print(f"Solução encontrada e escrita no arquivo {OUTPUT_PATH}")
     except SolutionException as ex:
         print(ex)
     except KeyError as e:

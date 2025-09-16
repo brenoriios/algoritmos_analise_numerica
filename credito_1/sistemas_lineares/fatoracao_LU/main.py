@@ -114,9 +114,6 @@ def solve_matrix(data: MatrixData, lower: bool = False):
             
         solution = solve_function(current_expression, data.results[line_index], variable)
         solutions[variable] = solution[0]
-
-        print(f'{variable} = {solution[0]}')
-        print(current_expression)
     
     return reverse_dict(solutions) if not lower else solutions
 
@@ -242,6 +239,7 @@ if __name__ == '__main__':
     try:
         data = get_data_from_json(INPUT_PATH)
         solution = LU_solve(data)
+        print(f"Solução encontrada e escrita no arquivo {OUTPUT_PATH}")
     except SolutionException as ex:
         print(ex)
     except KeyError as e:

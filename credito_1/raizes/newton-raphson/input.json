@@ -1,11 +1,11 @@
 {
     "function": {
-        "expression": "x^2 + x - 6",
-        "differential": "2*x + 1",
-        "variable": "x"
+        "expression": "(1 - (1 + T + (T ^ 2) / 2) * 2.71828^(-T)) - 0.9",
+        "differential": "((T ^ 2) / 2) * 2.71828 ^ (-T)",
+        "variable": "T"
     },
-    "starting_point": 1,
+    "starting_point": 2,
     "stop_condition": {
-        "error": 0.00001
+        "error": 0.000000001
     }
 }

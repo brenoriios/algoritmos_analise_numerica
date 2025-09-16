@@ -1,13 +1,13 @@
 {
     "function": {
-        "expression": "0.25 * (x - 2) + 0.1 * sin(x)",
-        "variable": "x"
+        "expression": "(1 - (1 + T + (T ^ 2) / 2) * 2.71828^(-T)) - 0.9",
+        "variable": "T"
     },
     "interval": {
-        "start": 1,
-        "end": 2
+        "start": 5,
+        "end": 6
     },
     "stop_condition": {
-        "error": 0.000000001
+        "interval_size": 0.000000001
     }
 }

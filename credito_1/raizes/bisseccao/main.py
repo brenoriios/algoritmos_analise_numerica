@@ -79,7 +79,7 @@ def solve_function(function: Function, variable_value: Decimal):
     symp_expression = sympify(function.expression)
     symp_variable = symbols(function.variable)
 
-    return N(symp_expression.evalf(subs={symp_variable: variable_value}))
+    return Decimal(str(N(symp_expression.evalf(subs={symp_variable: variable_value}))))
 
 def solve_for_b(function: Function, interval: Interval, stop_condition: StopCondition, iteration: int):
     if (interval.end - interval.start) < 0:
@@ -100,7 +100,7 @@ def solve_for_b(function: Function, interval: Interval, stop_condition: StopCond
     if signal_change_for_start: new_interval = Interval(interval.start, interval_middle)
     if signal_change_for_end: new_interval = Interval(interval_middle, interval.end)
 
-    OUTPUT_FILE.write(f'{iteration};{interval.start:.9f};{interval.end:.9f};{solution_interval_start:.9f};{solution_interval_end:.9f};{interval_middle:.9f};{solution_interval_middle:.9f} \n'.replace('.', ','))
+    OUTPUT_FILE.write(f'{iteration};{interval.start:.15f};{interval.end:.15f};{solution_interval_start:.15f};{solution_interval_end:.15f};{interval_middle:.15f};{solution_interval_middle:.15f} \n'.replace('.', ','))
 
     if(stop_condition.type == StopConditionType.ERROR):
         condition_value = abs(solution_interval_middle)
@@ -121,6 +121,9 @@ def bissection_solve(function: Function, interval: Interval, stop_condition: Sto
         iteration += 1
         solution = solve_for_b(function, solution.interval, stop_condition, iteration)
     
+    if iteration > 9999:
+        raise SolutionException("Não foi possível encontrar um resultado em 9999 iterações")
+    
     return solution.value
 
 INPUT_PATH = 'input.json'
@@ -132,7 +135,7 @@ if __name__ == '__main__':
     try:
         data = get_data_from_json(INPUT_PATH)
         solution = bissection_solve(data.function, data.interval, data.stop_condition)
-        print(f"Solução: {round(solution, 9)}")
+        print(f"Solução encontrada e escrita no arquivo {OUTPUT_PATH}")
     except SolutionException as ex:
         print(ex)
     except KeyError as e:

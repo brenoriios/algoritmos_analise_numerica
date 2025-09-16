@@ -99,8 +99,6 @@ def solve_matrix(data: MatrixData):
             
         solution = solve_function(system[line_index], data.results[line_index], variable)
         solutions[variable] = solution[0]
-        print(f'{variable} = {solution[0]}')
-        print(system[line_index])
 
     solutions = reverse_dict(solutions)
     
@@ -175,6 +173,7 @@ if __name__ == '__main__':
     try:
         data = get_data_from_json(INPUT_PATH)
         solution = gauss_solve(data)
+        print(f"Solução encontrada e escrita no arquivo {OUTPUT_PATH}")
     except SolutionException as ex:
         print(ex)
     except KeyError as e:

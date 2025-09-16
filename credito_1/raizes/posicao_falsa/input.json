@@ -1,14 +1,14 @@
 {
     "function": {
-        "expression": "0.25 * (x - 2) + 0.1 * sin(x)",
-        "variable": "x"
+        "expression": "(1000 * D^5) + (-3 * D) + 9.04",
+        "variable": "D"
     },
     "interval": {
-        "start": 1,
-        "end": 2
+        "start": -1,
+        "end": 0
     },
     "stop_condition": {
-        "error": 0.00001,
-        "interval_size": 0.00001
+        "error": 0.000000001
     }
 }
+

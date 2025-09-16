@@ -53,7 +53,7 @@ def format_value(value: Decimal):
 
 def write_dict(dictionary: dict, file: TextIOWrapper):
     for key, value in dictionary.items():
-        file.write(f'{key} = {value}\n')
+        file.write(f'{key} = {value:.15f}\n')
 
 def solve_function(expression: str, variables: dict[str, Decimal]):
     for key, value in variables.items():
@@ -67,8 +67,7 @@ def solve_function(expression: str, variables: dict[str, Decimal]):
     symp_expression = Eq(left_symp, right_symp)
     
     solutions_sympy = solve(symp_expression)
-
-    decimal_solutions = [Decimal(str(sol)) for sol in solutions_sympy]
+    decimal_solutions = [Decimal(eval(str(sol))) for sol in solutions_sympy]
     
     return decimal_solutions
 
@@ -110,15 +109,14 @@ def jacobi_solve(data: InputData):
         OUTPUT_FILE.write(f'\nIteração {iteration}\n')
         OUTPUT_FILE.write('\nSolução\n')
         write_dict(values, OUTPUT_FILE)
-        OUTPUT_FILE.write('\nVariação Absoluta\n')
-        OUTPUT_FILE.write(f'[{', '.join([str(value) for value in abs_variation])}]')
-        OUTPUT_FILE.write(f'\nMaior variação absoluta:\n{max(abs_variation)}')
-        OUTPUT_FILE.write('\n\nVariação Relativa\n')
-        OUTPUT_FILE.write(f'[{', '.join([str(value) for value in rel_variation])}]')
-        OUTPUT_FILE.write(f'\nMaior variação relativa:\n{max(rel_variation)}')
+        OUTPUT_FILE.write('\nVariação Absoluta: ')
+        OUTPUT_FILE.write(f'[{', '.join(['{:.15f}'.format(value) for value in abs_variation])}]')
+        OUTPUT_FILE.write(f'\nMaior variação absoluta: {max(abs_variation):.15f}')
+        OUTPUT_FILE.write('\n\nVariação Relativa: ')
+        OUTPUT_FILE.write(f'[{', '.join(['{:.15f}'.format(value) for value in rel_variation])}]')
+        OUTPUT_FILE.write(f'\nMaior variação relativa: {max(rel_variation):.15f}')
         OUTPUT_FILE.write('\n\n----------------------------------------------------------\n')
 
-        print([f'{key}: {str(value)}' for key, value in values.items()])
         iteration += 1
     
     if(iteration > MAX_ITERATIONS):
@@ -143,12 +141,12 @@ if __name__ == '__main__':
     try:
         data = get_data_from_json(INPUT_PATH)
         solution = jacobi_solve(data)
+        print(f"Solução encontrada e escrita no arquivo {OUTPUT_PATH}")
     except SolutionException as ex:
         print(ex)
     except KeyError as e:
         print(f"Formato de entrada inválido. Chave faltando: {e}")
     except Exception as e:
         print(f'Erro ao solucionar o problema: {e}')
-        traceback.print_exc()
     
     OUTPUT_FILE.close()
