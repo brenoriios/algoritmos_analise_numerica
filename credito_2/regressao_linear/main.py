@@ -48,6 +48,8 @@ def get_data_from_json(file_path: str):
     
     with open(f'{dir_path}/{file_path}', 'r') as json_file:
         json_data = json.load(json_file)
+    
+    if len(json_data['x']) != len(json_data['y']): raise KeyError("Os tamanhos de x e y não são iguais")
 
     return InputData(
         [KeyValuePair(Decimal(x), Decimal(y)) for x, y in zip(json_data['x'], json_data['y'])],
@@ -98,7 +100,7 @@ def get_output_file(file_path: str):
 
     return file
 
-INPUT_PATH = 'input_2.json'
+INPUT_PATH = 'input.json'
 OUTPUT_PATH = 'output.txt'
 
 if __name__ == '__main__':
