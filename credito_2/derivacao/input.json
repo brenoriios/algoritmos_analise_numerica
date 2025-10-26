@@ -1,0 +1,9 @@
+{
+    "x_start": -1,
+    "h": 0.2,
+    "function": {
+        "expression": "(2.71828182846 ** -x) * sin(x)",
+        "variable": "x"
+    },
+    "x_max": 6
+}
