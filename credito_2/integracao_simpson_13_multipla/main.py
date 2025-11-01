@@ -7,7 +7,7 @@ import json
 import os
 
 import numpy as np
-from sympy import N, sqrt, symbols, sympify
+import sympy as sp
 
 getcontext().prec = 50
 
@@ -47,18 +47,11 @@ class Solution:
 @dataclass
 class InputData:
     function: Function
-    a: Decimal
-    b: Decimal
-    error: Decimal
+    points: list[Decimal]
 
-    def __init__(self, function: Function, a: Decimal, b: Decimal, error: Decimal):
+    def __init__(self, function: Function, points: list[Decimal]):
         self.function = function
-        self.a = a
-        self.b = b
-        self.error = error
-
-    def __str__(self):
-        return f"f({self.function.variable}) = {self.function.expression} | {self.a} <= x <= {self.b}"
+        self.points = points
 
 class SolutionException(Exception):
     def __init__(self, *args):
@@ -70,13 +63,13 @@ def get_data_from_json(file_path: str):
     with open(f"{dir_path}/{file_path}", "r") as json_file:
         json_data = json.load(json_file)
 
-    if "a" not in json_data or "b" not in json_data:
-        raise KeyError("É necessário informar os pontos 'a' e 'b'")
     if "function" not in json_data:
         raise KeyError("É necessário informar a função")
-    if "error" not in json_data:
-        raise KeyError("É necessário informar o erro tolerado")
+    if "points" not in json_data:
+        raise KeyError("É necessário informar os pontos considerados")
 
+    if (len(json_data["points"]) + 1) % 3 != 0:
+        raise SolutionException("Para a regra de Simpson de 1/3 múltipla é necessário que seja possível formar apenas conjuntos de 3 pontos")
     if "expression" not in json_data["function"]:
         raise SolutionException("É necessário informar a expressão da função")
     if "variable" not in json_data["function"]:
@@ -84,85 +77,58 @@ def get_data_from_json(file_path: str):
 
     return InputData(
         Function(json_data["function"]["expression"], json_data["function"]["variable"]),
-        Decimal(json_data["a"]),
-        Decimal(json_data["b"]),
-        Decimal(json_data["error"])
+        [Decimal(x) for x in json_data["points"]]
     )
 
 def solve_function(function: Function, variable_value: Decimal):
-    symp_expression = sympify(function.expression)
-    symp_variable = symbols(function.variable)
+    symp_expression = sp.sympify(function.expression)
+    symp_variable = sp.symbols(function.variable)
 
-    return Decimal(str(N(symp_expression.evalf(subs={symp_variable: variable_value}))))
+    return Decimal(str(sp.N(symp_expression.evalf(subs={symp_variable: variable_value}))))
 
-def calc_integral_by_trapeziums(function: Function, points: list[Decimal], n: Decimal):
+def calc_integral_by_simpson_13(function: Function, points: list[Decimal]):
     a = points[0]
     b = points[-1]
+    n = len(points) - 1
 
     f_x0 = solve_function(function, a)
     f_xn = solve_function(function, b)
-    sum_f_xi = sum([solve_function(function, x) for x in points[1:-1]])
+    sum_odd = sum([solve_function(function, x) for x in points[1:-1:2]])
+    sum_even = sum([solve_function(function, x) for x in points[2:-2:2]])
 
-    mean_height = (f_x0 + 2 * sum_f_xi + f_xn) / (2 * n)
     width = b - a
+    mean_height = (f_x0 + (4 * sum_odd) + (2 * sum_even) + f_xn) / (3 * n)
+    
     integral = width * mean_height
     error = calc_error(function, a, b, n)
 
     return Solution(integral, error)
 
 def calc_error(function: Function, a: Decimal, b: Decimal, n: Decimal):
-    h = (b - a) / n
+    diff_4th_order = Function(calc_4th_order_differential(function), function.variable)
     
-    diff_sum = 0
-    x = a
-    while(x <= b):
-        diff = calc_2nd_order_differential([
-            Point(x - h, solve_function(function, x - h)),
-            Point(x, solve_function(function, x)),
-            Point(x + h, solve_function(function, x + h))
-        ], h)
-        diff_sum += diff
-        x += h
+    h = (b - a) / n
 
-    error_total = ((b - a) ** 3) / (12 * (n ** 3)) * diff_sum
+    mean_2nd_order_diff = sum([solve_function(diff_4th_order, i * h) for i in range(1, n + 1)]) / n
+
+    error_total = (((b - a) ** 5) / (180 * (n ** 4))) * mean_2nd_order_diff
     
     return abs(error_total)
 
-def calc_2nd_order_differential(points: list[Point], h: Decimal):
-    p0 = points[-3]
-    p1 = points[-2]
-    p2 = points[-1]
+def calc_4th_order_differential(function: Function):
+    symp_expression = sp.sympify(function.expression)
+    symp_variable = sp.symbols(function.variable)
 
-    differential = (p2.y - (2 * p1.y) + p0.y) / (h ** 2)
+    differential = sp.diff(symp_expression, symp_variable, 4)
 
     return differential
 
 def calc_integral(input_data: InputData):
-    n = 1
-    error = math.inf
-    solutions: list[Solution] = []
-
-    while(error > input_data.error and n < 100):
-        points = get_points(input_data.a, input_data.b, n)
-        solution = calc_integral_by_trapeziums(input_data.function, points, n)
-        solutions.append(solution)
-        print(f"{n} | {str(solution)}")
-
-        error = solution.error
-        n += 1
+    integral = calc_integral_by_simpson_13(input_data.function, input_data.points)
     
-    return solutions
-
-def get_points(a: Decimal, b: Decimal, n: int):
-    h = (b - a) / n
-    points = []
-
-    current_point = a
-    while current_point < b:
-        points.append(current_point)
-        current_point += h
+    print(integral)
     
-    return points
+    return integral
 
 
 def print_list(items: list):
