@@ -68,8 +68,8 @@ def get_data_from_json(file_path: str):
     if "points" not in json_data:
         raise KeyError("É necessário informar os pontos considerados")
 
-    if (len(json_data["points"]) + 1) % 3 != 0:
-        raise SolutionException("Para a regra de Simpson de 1/3 múltipla é necessário que seja possível formar apenas conjuntos de 3 pontos")
+    if len(json_data["points"]) != 3:
+        raise SolutionException("Para a regra de Simpson de 1/3 simples é necessário informar apenas 3 pontos")
     if "expression" not in json_data["function"]:
         raise SolutionException("É necessário informar a expressão da função")
     if "variable" not in json_data["function"]:
@@ -87,31 +87,28 @@ def solve_function(function: Function, variable_value: Decimal):
     return Decimal(str(sp.N(symp_expression.evalf(subs={symp_variable: variable_value}))))
 
 def calc_integral_by_simpson_13(function: Function, points: list[Decimal]):
-    a = points[0]
-    b = points[-1]
-    n = len(points) - 1
+    x0 = points[0]
+    x1 = points[1]
+    x2 = points[2]
 
-    f_x0 = solve_function(function, a)
-    f_xn = solve_function(function, b)
-    sum_odd = sum([solve_function(function, x) for x in points[1:-1:2]])
-    sum_even = sum([solve_function(function, x) for x in points[2:-2:2]])
+    f_x0 = solve_function(function, x0)
+    f_x1 = solve_function(function, x1)
+    f_x2 = solve_function(function, x2)
 
-    width = b - a
-    mean_height = (f_x0 + (4 * sum_odd) + (2 * sum_even) + f_xn) / (3 * n)
+    width = x2 - x0
+    mean_height = (f_x0 + (4 * f_x1) + f_x2) / 6
     
     integral = width * mean_height
-    error = calc_error(function, a, b, n)
+    error = calc_error(function, x0, x1, x2)
 
     return Solution(integral, error)
 
-def calc_error(function: Function, a: Decimal, b: Decimal, n: Decimal):
+def calc_error(function: Function, x0: Decimal, x1: Decimal, x2: Decimal):
     diff_4th_order = Function(calc_4th_order_differential(function), function.variable)
     
-    h = (b - a) / n
+    mean_4th_order_diff = (solve_function(diff_4th_order, x0) + solve_function(diff_4th_order, x1) + solve_function(diff_4th_order, x2)) / 3
 
-    mean_4th_order_diff = sum([solve_function(diff_4th_order, i * h) for i in range(1, n + 1)]) / n
-
-    error_total = (((b - a) ** 5) / (180 * (n ** 4))) * mean_4th_order_diff
+    error_total = (((x2 - x0) ** 5) / 2880) * mean_4th_order_diff
     
     return abs(error_total)
 
