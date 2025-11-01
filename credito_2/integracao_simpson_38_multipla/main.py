@@ -68,8 +68,8 @@ def get_data_from_json(file_path: str):
     if "points" not in json_data:
         raise KeyError("É necessário informar os pontos considerados")
 
-    if len(json_data["points"]) != 4:
-        raise SolutionException("Para a regra de Simpson de 3/8 simples é necessário informar apenas 4 pontos")
+    if (len(json_data["points"]) - 1) % 3 != 0:
+        raise SolutionException("Para a regra de Simpson de 3/8 múltipla é necessário que seja possível formar apenas conjuntos de 4 pontos")
     if "expression" not in json_data["function"]:
         raise SolutionException("É necessário informar a expressão da função")
     if "variable" not in json_data["function"]:
@@ -87,24 +87,32 @@ def solve_function(function: Function, variable_value: Decimal):
     return Decimal(str(sp.N(symp_expression.evalf(subs={symp_variable: variable_value}))))
 
 def calc_integral_by_simpson_38(function: Function, points: list[Decimal]):
-    width = points[-1] - points[0]
-    mean_height = (solve_function(function, points[0]) + 
-        (3 * solve_function(function, points[1])) + 
-        (3 * solve_function(function, points[2])) + 
-        solve_function(function, points[-1])
-    ) / 8
-    
+    a = points[0]
+    b = points[-1]
+    n = len(points) - 1
+    h = (b - a) / n
+
+    f_x0 = solve_function(function, a)
+    f_xn = solve_function(function, b)
+    sum_mult_3 = sum([solve_function(function, points[i]) for i in range(3, len(points) - 1, 3)])
+    sum_mult_2 = sum([solve_function(function, points[i]) + solve_function(function, points[i + 1]) for i in range(1, len(points) - 2, 3)])
+
+    width = (3 * h) / 8
+    mean_height = (f_x0 + (3 * sum_mult_2) + (2 * sum_mult_3) + f_xn)
+
     integral = width * mean_height
-    error = calc_error(function, points)
+    error = calc_error(function, a, b, n)
 
     return Solution(integral, error)
 
-def calc_error(function: Function, points: list[Decimal]):
+def calc_error(function: Function, a: Decimal, b: Decimal, n: Decimal):
     diff_4th_order = Function(calc_4th_order_differential(function), function.variable)
     
-    mean_4th_order_diff = sum([solve_function(diff_4th_order, x) for x in points]) / len(points)
+    h = (b - a) / n
 
-    error_total = (((points[-1] - points[0]) ** 5) / 6480) * mean_4th_order_diff
+    mean_4th_order_diff = sum([solve_function(diff_4th_order, i * h) for i in range(1, n + 1)]) / n
+
+    error_total = (((b - a) ** 5) / (80 * (n ** 4))) * mean_4th_order_diff
     
     return abs(error_total)
 
