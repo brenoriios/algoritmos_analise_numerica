@@ -68,8 +68,8 @@ def get_data_from_json(file_path: str):
     if "points" not in json_data:
         raise KeyError("É necessário informar os pontos considerados")
 
-    if len(json_data["points"]) != 3:
-        raise SolutionException("Para a regra de Simpson de 1/3 simples é necessário informar apenas 3 pontos")
+    if len(json_data["points"]) != 4:
+        raise SolutionException("Para a regra de Simpson de 3/8 simples é necessário informar apenas 4 pontos")
     if "expression" not in json_data["function"]:
         raise SolutionException("É necessário informar a expressão da função")
     if "variable" not in json_data["function"]:
@@ -87,16 +87,12 @@ def solve_function(function: Function, variable_value: Decimal):
     return Decimal(str(sp.N(symp_expression.evalf(subs={symp_variable: variable_value}))))
 
 def calc_integral_by_simpson_13(function: Function, points: list[Decimal]):
-    x0 = points[0]
-    x1 = points[1]
-    x2 = points[2]
-
-    f_x0 = solve_function(function, x0)
-    f_x1 = solve_function(function, x1)
-    f_x2 = solve_function(function, x2)
-
-    width = x2 - x0
-    mean_height = (f_x0 + (4 * f_x1) + f_x2) / 6
+    width = points[-1] - points[0]
+    mean_height = (solve_function(function, points[0]) + 
+        (3 * solve_function(function, points[1])) + 
+        (3 * solve_function(function, points[2])) + 
+        solve_function(function, points[-1])
+    ) / 8
     
     integral = width * mean_height
     error = calc_error(function, points)
@@ -108,7 +104,7 @@ def calc_error(function: Function, points: list[Decimal]):
     
     mean_4th_order_diff = sum([solve_function(diff_4th_order, x) for x in points]) / len(points)
 
-    error_total = (((points[-1] - points[0]) ** 5) / 2880) * mean_4th_order_diff
+    error_total = (((points[-1] - points[0]) ** 5) / 6480) * mean_4th_order_diff
     
     return abs(error_total)
 
@@ -155,3 +151,4 @@ if __name__ == "__main__":
         print(f"Formato de entrada inválido. {e}")
     except Exception as e:
         print(f"Erro ao solucionar o problema: {e}")
+        traceback.print_exc()
