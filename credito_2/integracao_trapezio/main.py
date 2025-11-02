@@ -2,12 +2,10 @@ from dataclasses import dataclass
 from decimal import Decimal, getcontext
 import math
 import traceback
-import matplotlib.pyplot as plt
 import json
 import os
 
-import numpy as np
-from sympy import N, sqrt, symbols, sympify
+import sympy as sp
 
 getcontext().prec = 50
 
@@ -50,12 +48,14 @@ class InputData:
     a: Decimal
     b: Decimal
     error: Decimal
+    n: int
 
-    def __init__(self, function: Function, a: Decimal, b: Decimal, error: Decimal):
+    def __init__(self, function: Function, a: Decimal, b: Decimal, error: Decimal | None, n: int | None):
         self.function = function
         self.a = a
         self.b = b
         self.error = error
+        self.n = n
 
     def __str__(self):
         return f"f({self.function.variable}) = {self.function.expression} | {self.a} <= x <= {self.b}"
@@ -74,8 +74,8 @@ def get_data_from_json(file_path: str):
         raise KeyError("É necessário informar os pontos 'a' e 'b'")
     if "function" not in json_data:
         raise KeyError("É necessário informar a função")
-    if "error" not in json_data:
-        raise KeyError("É necessário informar o erro tolerado")
+    if "error" not in json_data and "n" not in json_data:
+        raise KeyError("É necessário informar o erro tolerado ou o número de conjuntos")
 
     if "expression" not in json_data["function"]:
         raise SolutionException("É necessário informar a expressão da função")
@@ -86,14 +86,15 @@ def get_data_from_json(file_path: str):
         Function(json_data["function"]["expression"], json_data["function"]["variable"]),
         Decimal(json_data["a"]),
         Decimal(json_data["b"]),
-        Decimal(json_data["error"])
+        Decimal(json_data["error"]) if "error" in json_data else None,
+        json_data["n"] if "n" in json_data else None
     )
 
 def solve_function(function: Function, variable_value: Decimal):
-    symp_expression = sympify(function.expression)
-    symp_variable = symbols(function.variable)
+    symp_expression = sp.sympify(function.expression)
+    symp_variable = sp.symbols(function.variable)
 
-    return Decimal(str(N(symp_expression.evalf(subs={symp_variable: variable_value}))))
+    return Decimal(str(sp.N(symp_expression.evalf(subs={symp_variable: variable_value}))))
 
 def calc_integral_by_trapeziums(function: Function, points: list[Decimal], n: Decimal):
     a = points[0]
@@ -113,7 +114,7 @@ def calc_integral_by_trapeziums(function: Function, points: list[Decimal], n: De
 def calc_error(function: Function, a: Decimal, b: Decimal, n: Decimal):
     h = (b - a) / n
     
-    diff_sum = 0
+    diffs = []
     x = a
     while(x <= b):
         diff = calc_2nd_order_differential([
@@ -121,10 +122,11 @@ def calc_error(function: Function, a: Decimal, b: Decimal, n: Decimal):
             Point(x, solve_function(function, x)),
             Point(x + h, solve_function(function, x + h))
         ], h)
-        diff_sum += diff
+
+        diffs.append(diff)
         x += h
 
-    error_total = ((b - a) ** 3) / (12 * (n ** 3)) * diff_sum
+    error_total = ((3 * (h ** 3)) / 12) * (sum(diffs) / (n + 1))
     
     return abs(error_total)
 
@@ -138,15 +140,22 @@ def calc_2nd_order_differential(points: list[Point], h: Decimal):
     return differential
 
 def calc_integral(input_data: InputData):
-    n = 1
+    n =  input_data.n if input_data.n != None else 1
     error = math.inf
     solutions: list[Solution] = []
+
+    if input_data.n != None:
+        points = get_points(input_data.a, input_data.b, n)
+        solution = calc_integral_by_trapeziums(input_data.function, points, n)
+        solutions.append(solution)
+        print(f"N = {n} | {str(solution)}")
+        return
 
     while(error > input_data.error and n < 100):
         points = get_points(input_data.a, input_data.b, n)
         solution = calc_integral_by_trapeziums(input_data.function, points, n)
         solutions.append(solution)
-        print(f"{n} | {str(solution)}")
+        print(f"N = {n} | {str(solution)}")
 
         error = solution.error
         n += 1
@@ -175,6 +184,15 @@ def get_output_file(file_path: str):
 
     return file
 
+def print_point_conditions(input_data: InputData):
+    if input_data.error and input_data.n:
+        return print(f"Tanto número de conjuntos quanto erro tolerado foram detectados.\nSerá considerado apenas o número de conjuntos: {input_data.n}")
+
+    if input_data.n:
+        return print(f"Detectado número de conjuntos: {input_data.n}")
+    
+    if input_data.error:
+        return print(f"Detectado erro tolerado: {input_data.error}")
 
 INPUT_PATH = "input.json"
 OUTPUT_PATH = "output.txt"
@@ -183,6 +201,7 @@ if __name__ == "__main__":
     try:
         output_file = get_output_file(OUTPUT_PATH)
         input_data = get_data_from_json(INPUT_PATH)
+        print_point_conditions(input_data)
         solution = calc_integral(input_data)
 
         output_file.close()
@@ -192,3 +211,4 @@ if __name__ == "__main__":
         print(f"Formato de entrada inválido. {e}")
     except Exception as e:
         print(f"Erro ao solucionar o problema: {e}")
+        traceback.print_exc()
