@@ -34,12 +34,10 @@ class Function:
 class Solution:
     integral_value: Decimal
     error: Decimal
-    n: int
 
-    def __init__(self, integral_value: Decimal, error: Decimal, n: int):
+    def __init__(self, integral_value: Decimal, error: Decimal):
         self.integral_value = integral_value
         self.error = error
-        self.n = n
     
     def __str__(self):
         return f"I = {self.integral_value} | Erro = {self.error}"
@@ -111,7 +109,7 @@ def calc_integral_by_trapeziums(function: Function, points: list[Decimal], n: De
     integral = width * mean_height
     error = calc_error(function, a, b, n)
 
-    return Solution(integral, error, n)
+    return Solution(integral, error)
 
 def calc_error(function: Function, a: Decimal, b: Decimal, n: Decimal):
     h = (b - a) / n
@@ -142,7 +140,7 @@ def calc_2nd_order_differential(points: list[Point], h: Decimal):
     return differential
 
 def calc_integral(input_data: InputData):
-    n =  input_data.n if input_data.n != None else 2
+    n =  input_data.n if input_data.n != None else 1
     error = math.inf
     solutions: list[Solution] = []
 
@@ -151,7 +149,7 @@ def calc_integral(input_data: InputData):
         solution = calc_integral_by_trapeziums(input_data.function, points, n)
         solutions.append(solution)
         print(f"N = {n} | {str(solution)}")
-        return solutions
+        return
 
     while(error > input_data.error and n < 100):
         points = get_points(input_data.a, input_data.b, n)
@@ -206,9 +204,6 @@ if __name__ == "__main__":
         print_point_conditions(input_data)
         solution = calc_integral(input_data)
 
-        for s in solution:
-            output_file.writelines([f'N = {s.n} | Integral = {s.integral_value} | Erro = {s.error}', '\n'])
-
         output_file.close()
     except SolutionException as ex:
         print(ex)
@@ -216,3 +211,4 @@ if __name__ == "__main__":
         print(f"Formato de entrada inválido. {e}")
     except Exception as e:
         print(f"Erro ao solucionar o problema: {e}")
+        traceback.print_exc()

@@ -29,7 +29,7 @@ class Function:
     variable: str
 
     def __str__(self):
-        return f"y = {self.expression}"
+        return f"f({self.variable}) = {self.expression}"
 
 
 @dataclass
@@ -59,17 +59,20 @@ class InputData:
 
 @dataclass
 class Solution:
-    original_function: list[Point]
+    original_function: Function
+    original_points: list[Point]
     first_order_differentials: list[Point]
     second_order_differentials: list[Point]
 
     def __init__(
         self,
-        original_function: list[Decimal],
+        original_function: Function,
+        original_points: list[Decimal],
         first_order_differentials: list[Decimal],
         second_order_differentials: list[Decimal],
     ):
         self.original_function = original_function
+        self.original_points = original_points
         self.first_order_differentials = first_order_differentials
         self.second_order_differentials = second_order_differentials
 
@@ -162,16 +165,16 @@ def get_differentials(input_data: InputData):
 
         x = next_x
 
-    return Solution(points[1:], first_order_differentials, second_order_differentials)
+    return Solution(input_data.function, points[1:], first_order_differentials, second_order_differentials)
 
 
 def plot_points(solution: Solution):
     plt.plot(
-        [p.x for p in solution.original_function],
-        [p.y for p in solution.original_function],
+        [p.x for p in solution.original_points],
+        [p.y for p in solution.original_points],
         color="blue",
         linestyle="--",
-        label="Função original",
+        label=str(solution.original_function),
     )
 
     plt.plot(
@@ -212,16 +215,13 @@ def get_output_file(file_path: str):
 
 
 INPUT_PATH = "input.json"
-OUTPUT_PATH = "output.txt"
 
 if __name__ == "__main__":
     try:
-        output_file = get_output_file(OUTPUT_PATH)
         input_data = get_data_from_json(INPUT_PATH)
         solution = get_differentials(input_data)
         plot_points(solution)
 
-        output_file.close()
     except SolutionException as ex:
         print(ex)
     except KeyError as e:

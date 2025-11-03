@@ -25,32 +25,10 @@ class Point:
         return f"({self.x:.9f}, {self.y:.9f})"
 
 @dataclass
-class Function:
-    expression: str
-    variable: str
-
-    def __str__(self):
-        return f"y = {self.expression}"
-
-@dataclass
-class Solution:
-    integral_value: Decimal
-    error: Decimal
-
-    def __init__(self, integral_value: Decimal, error: Decimal):
-        self.integral_value = integral_value
-        self.error = error
-    
-    def __str__(self):
-        return f"I = {self.integral_value} | Erro = {self.error}"
-
-@dataclass
 class InputData:
-    function: Function
     points: list[Decimal]
 
-    def __init__(self, function: Function, points: list[Decimal]):
-        self.function = function
+    def __init__(self, points: list[Point]):
         self.points = points
 
 class SolutionException(Exception):
@@ -63,71 +41,37 @@ def get_data_from_json(file_path: str):
     with open(f"{dir_path}/{file_path}", "r") as json_file:
         json_data = json.load(json_file)
 
-    if "function" not in json_data:
-        raise KeyError("É necessário informar a função")
     if "points" not in json_data:
         raise KeyError("É necessário informar os pontos considerados")
 
-    if (len(json_data["points"]) - 1) % 3 != 0:
+    if (len(json_data["points"]["x"]) - 1) % 3 != 0:
         raise SolutionException("Para a regra de Simpson de 3/8 múltipla é necessário que seja possível formar apenas conjuntos de 4 pontos")
-    if "expression" not in json_data["function"]:
-        raise SolutionException("É necessário informar a expressão da função")
-    if "variable" not in json_data["function"]:
-        raise SolutionException("É necessário informar a variável considerada na função")
 
     return InputData(
-        Function(json_data["function"]["expression"], json_data["function"]["variable"]),
-        [Decimal(x) for x in json_data["points"]]
+        [Point(Decimal(x), Decimal(y)) for x, y in zip(json_data["points"]["x"], json_data["points"]["y"])]
     )
 
-def solve_function(function: Function, variable_value: Decimal):
-    symp_expression = sp.sympify(function.expression)
-    symp_variable = sp.symbols(function.variable)
-
-    return Decimal(str(sp.N(symp_expression.evalf(subs={symp_variable: variable_value}))))
-
-def calc_integral_by_simpson_38(function: Function, points: list[Decimal]):
-    a = points[0]
-    b = points[-1]
+def calc_integral_by_simpson_38(points: list[Point]):
+    p0 = points[0]
+    pn = points[-1]
     n = len(points) - 1
-    h = (b - a) / n
+    h = (pn.x - p0.x) / n
 
-    f_x0 = solve_function(function, a)
-    f_xn = solve_function(function, b)
-    sum_mult_3 = sum([solve_function(function, points[i]) for i in range(3, len(points) - 1, 3)])
-    sum_mult_2 = sum([solve_function(function, points[i]) + solve_function(function, points[i + 1]) for i in range(1, len(points) - 2, 3)])
+    sum_mult_3 = sum([points[i].y for i in range(3, len(points) - 1, 3)])
+    sum_mult_2 = sum([points[i].y + points[i + 1].y for i in range(1, len(points) - 2, 3)])
 
     width = (3 * h) / 8
-    mean_height = (f_x0 + (3 * sum_mult_2) + (2 * sum_mult_3) + f_xn)
+    mean_height = (p0.y + (3 * sum_mult_2) + (2 * sum_mult_3) + pn.y)
 
     integral = width * mean_height
-    error = calc_error(function, a, b, n)
 
-    return Solution(integral, error)
+    return integral
 
-def calc_error(function: Function, a: Decimal, b: Decimal, n: Decimal):
-    diff_4th_order = Function(calc_4th_order_differential(function), function.variable)
-    
-    h = (b - a) / n
-
-    mean_4th_order_diff = sum([solve_function(diff_4th_order, i * h) for i in range(1, n + 1)]) / n
-
-    error_total = (((b - a) ** 5) / (80 * (n ** 4))) * mean_4th_order_diff
-    
-    return abs(error_total)
-
-def calc_4th_order_differential(function: Function):
-    symp_expression = sp.sympify(function.expression)
-    symp_variable = sp.symbols(function.variable)
-
-    differential = sp.diff(symp_expression, symp_variable, 4)
-
-    return differential
 
 def calc_integral(input_data: InputData):
-    integral = calc_integral_by_simpson_38(input_data.function, input_data.points)
+    integral = calc_integral_by_simpson_38(input_data.points)
     
-    print(integral)
+    print(f"I = {integral}")
     
     return integral
 
@@ -152,6 +96,8 @@ if __name__ == "__main__":
         input_data = get_data_from_json(INPUT_PATH)
         solution = calc_integral(input_data)
 
+        output_file.writelines([f"Integral = {solution}", "\n"])
+
         output_file.close()
     except SolutionException as ex:
         print(ex)
@@ -159,4 +105,3 @@ if __name__ == "__main__":
         print(f"Formato de entrada inválido. {e}")
     except Exception as e:
         print(f"Erro ao solucionar o problema: {e}")
-        traceback.print_exc()
