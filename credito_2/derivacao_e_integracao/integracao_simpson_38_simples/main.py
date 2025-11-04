@@ -1,13 +1,9 @@
 from dataclasses import dataclass
 from decimal import Decimal, getcontext
-import math
 import traceback
-import matplotlib.pyplot as plt
 import json
 import os
 
-import numpy as np
-import sympy as sp
 
 getcontext().prec = 50
 
@@ -25,32 +21,10 @@ class Point:
         return f"({self.x:.9f}, {self.y:.9f})"
 
 @dataclass
-class Function:
-    expression: str
-    variable: str
-
-    def __str__(self):
-        return f"y = {self.expression}"
-
-@dataclass
-class Solution:
-    integral_value: Decimal
-    error: Decimal
-
-    def __init__(self, integral_value: Decimal, error: Decimal):
-        self.integral_value = integral_value
-        self.error = error
-    
-    def __str__(self):
-        return f"I = {self.integral_value} | Erro = {self.error}"
-
-@dataclass
 class InputData:
-    function: Function
     points: list[Decimal]
 
-    def __init__(self, function: Function, points: list[Decimal]):
-        self.function = function
+    def __init__(self, points: list[Point]):
         self.points = points
 
 class SolutionException(Exception):
@@ -63,61 +37,28 @@ def get_data_from_json(file_path: str):
     with open(f"{dir_path}/{file_path}", "r") as json_file:
         json_data = json.load(json_file)
 
-    if "function" not in json_data:
-        raise KeyError("É necessário informar a função")
     if "points" not in json_data:
         raise KeyError("É necessário informar os pontos considerados")
 
-    if len(json_data["points"]) != 4:
+    if len(json_data["points"]["x"]) != 4:
         raise SolutionException("Para a regra de Simpson de 3/8 simples é necessário informar apenas 4 pontos")
-    if "expression" not in json_data["function"]:
-        raise SolutionException("É necessário informar a expressão da função")
-    if "variable" not in json_data["function"]:
-        raise SolutionException("É necessário informar a variável considerada na função")
-
+    
     return InputData(
-        Function(json_data["function"]["expression"], json_data["function"]["variable"]),
-        [Decimal(x) for x in json_data["points"]]
+        [Point(Decimal(x), Decimal(y)) for x, y in zip(json_data["points"]["x"], json_data["points"]["y"])]
     )
 
-def solve_function(function: Function, variable_value: Decimal):
-    symp_expression = sp.sympify(function.expression)
-    symp_variable = sp.symbols(function.variable)
 
-    return Decimal(str(sp.N(symp_expression.evalf(subs={symp_variable: variable_value}))))
+def calc_integral_by_simpson_38(points: list[Point]):
+    width = points[-1].x - points[0].x
 
-def calc_integral_by_simpson_38(function: Function, points: list[Decimal]):
-    width = points[-1] - points[0]
-    mean_height = (solve_function(function, points[0]) + 
-        (3 * solve_function(function, points[1])) + 
-        (3 * solve_function(function, points[2])) + 
-        solve_function(function, points[-1])
-    ) / 8
+    mean_height = (points[0].y + (3 * points[1].y) + (3 * points[2].y) + points[-1].y) / 8
     
     integral = width * mean_height
-    error = calc_error(function, points)
 
-    return Solution(integral, error)
-
-def calc_error(function: Function, points: list[Decimal]):
-    diff_4th_order = Function(calc_4th_order_differential(function), function.variable)
-    
-    mean_4th_order_diff = sum([solve_function(diff_4th_order, x) for x in points]) / len(points)
-
-    error_total = (((points[-1] - points[0]) ** 5) / 6480) * mean_4th_order_diff
-    
-    return abs(error_total)
-
-def calc_4th_order_differential(function: Function):
-    symp_expression = sp.sympify(function.expression)
-    symp_variable = sp.symbols(function.variable)
-
-    differential = sp.diff(symp_expression, symp_variable, 4)
-
-    return differential
+    return integral
 
 def calc_integral(input_data: InputData):
-    integral = calc_integral_by_simpson_38(input_data.function, input_data.points)
+    integral = calc_integral_by_simpson_38(input_data.points)
     
     print(integral)
     
