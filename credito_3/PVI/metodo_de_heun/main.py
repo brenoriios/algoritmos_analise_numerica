@@ -86,11 +86,20 @@ def get_data_from_json(file_path: str):
         json_data["interval"]
     )
 
-def get_next_y(point: Point, differential: Function, h: Decimal):  
+def predict_next_y(point: Point, differential: Function, h: Decimal):  
     f_xy = solve_function(differential, [point.x, point.y])
     next_y = point.y + f_xy * h
 
     return next_y
+
+def get_next_y(point: Point, predicted_point: Point, differential: Function, h: Decimal):
+    f_xy = solve_function(differential, [point.x, point.y])
+    next_f_xy_predicted = solve_function(differential, [predicted_point.x, predicted_point.y])
+
+    next_y = point.y + ((f_xy + next_f_xy_predicted) / 2) * h
+
+    return next_y
+    
 
 def solve(input_data: InputData):
     solutions = [ input_data.first_point ]
@@ -98,8 +107,10 @@ def solve(input_data: InputData):
     x = input_data.first_point.x
     point = input_data.first_point
     while(x < input_data.interval[1]):
-        next_y = get_next_y(point, input_data.diff, input_data.h)
         next_x = x + input_data.h
+
+        next_y_predicted = predict_next_y(point, input_data.diff, input_data.h)
+        next_y = get_next_y(point, Point(next_x, next_y_predicted), input_data.diff, input_data.h)
 
         point = Point(next_x, next_y)
         solutions.append(point)
