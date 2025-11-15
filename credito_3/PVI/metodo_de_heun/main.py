@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from decimal import Decimal
 import json
 import os
-import traceback
 
 from matplotlib import pyplot as plt
 from sympy import N, symbols, sympify
@@ -94,9 +93,9 @@ def predict_next_y(point: Point, differential: Function, h: Decimal):
 
 def get_next_y(point: Point, predicted_point: Point, differential: Function, h: Decimal):
     f_xy = solve_function(differential, [point.x, point.y])
-    next_f_xy_predicted = solve_function(differential, [predicted_point.x, predicted_point.y])
+    f_next_xy_predicted = solve_function(differential, [predicted_point.x, predicted_point.y])
 
-    next_y = point.y + ((f_xy + next_f_xy_predicted) / 2) * h
+    next_y = point.y + ((f_xy + f_next_xy_predicted) / 2) * h
 
     return next_y
     

@@ -45,6 +45,7 @@ class InputData:
         self.h = h
         self.interval = interval
 
+
 def solve_function(function: Function, variable_values: list[Decimal]):
     symp_expression = sympify(function.expression)
     symp_variables = symbols(function.variables)
@@ -84,9 +85,16 @@ def get_data_from_json(file_path: str):
         json_data["interval"]
     )
 
-def get_next_y(point: Point, differential: Function, h: Decimal):  
+def get_middle_next_y(point: Point, differential: Function, h: Decimal):  
     f_xy = solve_function(differential, [point.x, point.y])
-    next_y = point.y + f_xy * h
+    next_y = point.y + f_xy * (h / 2)
+
+    return next_y
+
+def get_next_y(point: Point, middle_point: Point, differential: Function, h: Decimal):
+    f_middle_xy = solve_function(differential, [middle_point.x, middle_point.y])
+
+    next_y = point.y + f_middle_xy * h
 
     return next_y
 
@@ -96,8 +104,11 @@ def solve(input_data: InputData):
     x = input_data.first_point.x
     point = input_data.first_point
     while(x < input_data.interval[1]):
-        next_y = get_next_y(point, input_data.diff, input_data.h)
+        x_middle = point.x + (input_data.h / 2)
+        y_middle = get_middle_next_y(point, input_data.diff, input_data.h)
+
         next_x = x + input_data.h
+        next_y = get_next_y(point, Point(x_middle, y_middle), input_data.diff, input_data.h)
 
         point = Point(next_x, next_y)
         solutions.append(point)

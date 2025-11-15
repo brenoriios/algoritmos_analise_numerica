@@ -1,0 +1,12 @@
+{
+    "differential": {
+        "expression": "(-2 * (x ** 3)) + (12 * (x ** 2)) - (20 * x) + 8.5",
+        "variables": ["x", "y"]
+    },
+    "firstPoint": {
+        "x": 0,
+        "y": 1
+    },
+    "h": 0.5,
+    "interval": [0, 4]
+}

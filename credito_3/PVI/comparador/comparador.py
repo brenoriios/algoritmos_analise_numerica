@@ -1,24 +1,21 @@
-
-
 from dataclasses import dataclass
 from decimal import Decimal
 import json
 import os
+import sys
 
 from matplotlib import pyplot as plt
-from sympy import N, symbols, sympify
 
-class SolutionException(Exception):
-    def __init__(self, *args):
-        super().__init__(*args)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from metodo_de_euler import main as Euler
+from metodo_de_euler_modificado import main as EulerModificado
+from metodo_de_heun import main as Heun
 
 @dataclass
 class Function:
     expression: str
     variables: list[str]
-
-    def __str__(self):
-        return f"f({self.variable}) = {self.expression}"
     
 @dataclass
 class Point:
@@ -44,12 +41,6 @@ class InputData:
         self.first_point = first_point
         self.h = h
         self.interval = interval
-
-def solve_function(function: Function, variable_values: list[Decimal]):
-    symp_expression = sympify(function.expression)
-    symp_variables = symbols(function.variables)
-
-    return Decimal(str(N(symp_expression.evalf(subs=dict(zip(symp_variables, variable_values))))))
 
 def get_data_from_json(file_path: str):
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -84,65 +75,52 @@ def get_data_from_json(file_path: str):
         json_data["interval"]
     )
 
-def get_next_y(point: Point, differential: Function, h: Decimal):  
-    f_xy = solve_function(differential, [point.x, point.y])
-    next_y = point.y + f_xy * h
-
-    return next_y
-
-def solve(input_data: InputData):
-    solutions = [ input_data.first_point ]
-
-    x = input_data.first_point.x
-    point = input_data.first_point
-    while(x < input_data.interval[1]):
-        next_y = get_next_y(point, input_data.diff, input_data.h)
-        next_x = x + input_data.h
-
-        point = Point(next_x, next_y)
-        solutions.append(point)
-        x = next_x
-    
-    return solutions
-
-def plot_points(solutions: list[Point]):
+def plot_points(solutionsEuler: list[Point], solutionsHeun: list[Point], solutionsEulerModificado: list[Point]):
     plt.plot(
-        [p.x for p in solutions],
-        [p.y for p in solutions],
+        [p.x for p in solutionsEuler],
+        [p.y for p in solutionsEuler],
         color="blue",
         linestyle="-",
         marker="o",
+        label="Método de Euler"
+    )
+   
+    plt.plot(
+        [p.x for p in solutionsHeun],
+        [p.y for p in solutionsHeun],
+        color="red",
+        linestyle="-",
+        marker="o",
+        label="Método de Heun"
+    )
+
+    plt.plot(
+        [p.x for p in solutionsEulerModificado],
+        [p.y for p in solutionsEulerModificado],
+        color="green",
+        linestyle="-",
+        marker="o",
+        label="Método de Euler Modificado"
     )
 
     plt.xlabel("x")
     plt.ylabel("y")
     plt.grid(True)
+    plt.legend()
 
     plt.savefig(f"{os.path.dirname(os.path.realpath(__file__))}/output")
     plt.show()
 
-def get_output_file(file_path: str):
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    file = open(f"{dir_path}/{file_path}", "w")
-
-    return file
-
 INPUT_PATH = "input.json"
-OUTPUT_PATH = "output.txt"
-
 if __name__ == "__main__":
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
     try:
-        output_file = get_output_file(OUTPUT_PATH)
         input_data = get_data_from_json(INPUT_PATH)
-        solutions = solve(input_data)
-        plot_points(solutions)
-
-        for solution in solutions:
-            print(str(solution))
-
-        output_file.close()
-    except SolutionException as ex:
-        print(ex)
+        solutionsEuler = Euler.solve(input_data)
+        solutionsEulerModificado = EulerModificado.solve(input_data)
+        solutionsHeun = Heun.solve(input_data)
+        plot_points(solutionsEuler, solutionsEulerModificado, solutionsHeun)
     except KeyError as e:
         print(f"Formato de entrada inválido. {e}")
     except Exception as e:
