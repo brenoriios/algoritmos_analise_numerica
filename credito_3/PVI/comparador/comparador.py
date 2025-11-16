@@ -14,6 +14,9 @@ from metodo_de_euler_modificado import main as EulerModificado
 from metodo_de_heun import main as Heun
 from metodo_serie_de_taylor import main as Taylor
 from metodo_de_runge_kutta_2 import main as RungeKutta2
+from metodo_de_runge_kutta_3 import main as RungeKutta3
+from metodo_de_runge_kutta_4 import main as RungeKutta4
+from metodo_de_runge_kutta_6 import main as RungeKutta6
 
 @dataclass
 class Function:
@@ -52,6 +55,9 @@ class Solutions:
     euler_modificado: list[Point]
     taylor: list[Point]
     runge_kutta_2: list[Point]
+    runge_kutta_3: list[Point]
+    runge_kutta_4: list[Point]
+    runge_kutta_6: list[Point]
 
 def get_data_from_json(file_path: str):
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -132,6 +138,33 @@ def plot_points(solutions: Solutions):
         label="Método de Runge Kutta de 2° ordem"
     )
 
+    plt.plot(
+        [p.x for p in solutions.runge_kutta_3],
+        [p.y for p in solutions.runge_kutta_3],
+        color="brown",
+        linestyle="-",
+        marker="o",
+        label="Método de Runge Kutta de 3° ordem"
+    )
+
+    plt.plot(
+        [p.x for p in solutions.runge_kutta_4],
+        [p.y for p in solutions.runge_kutta_4],
+        color="purple",
+        linestyle="-",
+        marker="o",
+        label="Método de Runge Kutta de 4° ordem"
+    )
+
+    plt.plot(
+        [p.x for p in solutions.runge_kutta_6],
+        [p.y for p in solutions.runge_kutta_6],
+        color="cyan",
+        linestyle="-",
+        marker="o",
+        label="Método de Runge Kutta de 6° ordem"
+    )
+
     plt.xlabel("x")
     plt.ylabel("y")
     plt.grid(True)
@@ -151,13 +184,19 @@ if __name__ == "__main__":
         solutionsHeun = Heun.solve(input_data)
         solutionsTaylor = Taylor.solve(input_data)
         solutionsRK2 = RungeKutta2.solve(input_data)
+        solutionsRK3 = RungeKutta3.solve(input_data)
+        solutionsRK4 = RungeKutta4.solve(input_data)
+        solutionsRK6 = RungeKutta6.solve(input_data)
 
         solutions = Solutions(
             solutionsEuler,
             solutionsHeun,
             solutionsEulerModificado,
             solutionsTaylor,
-            solutionsRK2
+            solutionsRK2,
+            solutionsRK3,
+            solutionsRK4,
+            solutionsRK6
         )
 
         plot_points(solutions)
