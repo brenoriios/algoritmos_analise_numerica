@@ -87,18 +87,6 @@ def get_data_from_json(file_path: str):
         json_data["interval"]
     )
 
-def get_middle_next_y(point: Point, function: Function, h: Decimal):  
-    f_xy = solve_function(function, [point.x, point.y])
-    next_y = point.y + f_xy * (h / 2)
-
-    return next_y
-
-def get_next_y(point: Point, middle_point: Point, function: Function, h: Decimal):
-    f_middle_xy = solve_function(function, [middle_point.x, middle_point.y])
-
-    next_y = point.y + f_middle_xy * h
-
-    return next_y
 
 def diff_y(function: Function):
     diff_x = diff(function.expression, function.variables[0])

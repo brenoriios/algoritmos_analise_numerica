@@ -1,24 +1,27 @@
+
+
 from dataclasses import dataclass
 from decimal import Decimal, getcontext
 import json
 import os
-import sys
+import traceback
 
 from matplotlib import pyplot as plt
+from sympy import N, symbols, sympify
 
 getcontext().prec = 50
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from metodo_de_euler import main as Euler
-from metodo_de_euler_modificado import main as EulerModificado
-from metodo_de_heun import main as Heun
-from metodo_serie_de_taylor import main as Taylor
-from metodo_de_runge_kutta_2 import main as RungeKutta2
+class SolutionException(Exception):
+    def __init__(self, *args):
+        super().__init__(*args)
 
 @dataclass
 class Function:
     expression: str
     variables: list[str]
+
+    def __str__(self):
+        return f"f({self.variable}) = {self.expression}"
     
 @dataclass
 class Point:
@@ -45,13 +48,12 @@ class InputData:
         self.h = h
         self.interval = interval
 
-@dataclass
-class Solutions:
-    euler: list[Point]
-    heun: list[Point]
-    euler_modificado: list[Point]
-    taylor: list[Point]
-    runge_kutta_2: list[Point]
+
+def solve_function(function: Function, variable_values: list[Decimal]):
+    symp_expression = sympify(function.expression)
+    symp_variables = symbols(function.variables)
+
+    return Decimal(str(N(symp_expression.evalf(subs=dict(zip(symp_variables, variable_values))))))
 
 def get_data_from_json(file_path: str):
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -86,81 +88,68 @@ def get_data_from_json(file_path: str):
         json_data["interval"]
     )
 
-def plot_points(solutions: Solutions):
+def get_next_y(point: Point, function: Function, h: Decimal):
+    k1 = solve_function(function, [point.x, point.y])
+    k2 = solve_function(function, [point.x + (Decimal(3 / 4) * h), point.y + (Decimal(3 / 4) * k1 * h)])
+
+    next_y = point.y + ((Decimal(1 / 3) * k1) + (Decimal(2 / 3) * k2)) * h
+
+    return next_y
+    
+
+def solve(input_data: InputData):
+    solutions = [ input_data.first_point ]
+
+    x = input_data.first_point.x
+    point = input_data.first_point
+    while(x < input_data.interval[1]):
+        next_x = x + input_data.h
+        next_y = get_next_y(point, input_data.edo, input_data.h)
+
+        point = Point(next_x, next_y)
+        solutions.append(point)
+        x = next_x
+    
+    return solutions
+
+def plot_points(solutions: list[Point]):
     plt.plot(
-        [p.x for p in solutions.euler],
-        [p.y for p in solutions.euler],
+        [p.x for p in solutions],
+        [p.y for p in solutions],
         color="blue",
         linestyle="-",
         marker="o",
-        label="Método de Euler"
-    )
-   
-    plt.plot(
-        [p.x for p in solutions.heun],
-        [p.y for p in solutions.heun],
-        color="red",
-        linestyle="-",
-        marker="o",
-        label="Método de Heun"
-    )
-
-    plt.plot(
-        [p.x for p in solutions.euler_modificado],
-        [p.y for p in solutions.euler_modificado],
-        color="green",
-        linestyle="-",
-        marker="o",
-        label="Método de Euler Modificado"
-    )
-
-    plt.plot(
-        [p.x for p in solutions.taylor],
-        [p.y for p in solutions.taylor],
-        color="yellow",
-        linestyle="-",
-        marker="o",
-        label="Método da Série de Taylor"
-    )
-
-    plt.plot(
-        [p.x for p in solutions.runge_kutta_2],
-        [p.y for p in solutions.runge_kutta_2],
-        color="orange",
-        linestyle="-",
-        marker="o",
-        label="Método de Runge Kutta de 2° ordem"
     )
 
     plt.xlabel("x")
     plt.ylabel("y")
     plt.grid(True)
-    plt.legend()
 
     plt.savefig(f"{os.path.dirname(os.path.realpath(__file__))}/output")
     plt.show()
 
+def get_output_file(file_path: str):
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    file = open(f"{dir_path}/{file_path}", "w")
+
+    return file
+
 INPUT_PATH = "input.json"
+OUTPUT_PATH = "output.txt"
+
 if __name__ == "__main__":
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    
     try:
+        output_file = get_output_file(OUTPUT_PATH)
         input_data = get_data_from_json(INPUT_PATH)
-        solutionsEuler = Euler.solve(input_data)
-        solutionsEulerModificado = EulerModificado.solve(input_data)
-        solutionsHeun = Heun.solve(input_data)
-        solutionsTaylor = Taylor.solve(input_data)
-        solutionsRK2 = RungeKutta2.solve(input_data)
-
-        solutions = Solutions(
-            solutionsEuler,
-            solutionsHeun,
-            solutionsEulerModificado,
-            solutionsTaylor,
-            solutionsRK2
-        )
-
+        solutions = solve(input_data)
         plot_points(solutions)
+
+        for solution in solutions:
+            print(str(solution))
+
+        output_file.close()
+    except SolutionException as ex:
+        print(ex)
     except KeyError as e:
         print(f"Formato de entrada inválido. {e}")
     except Exception as e:
