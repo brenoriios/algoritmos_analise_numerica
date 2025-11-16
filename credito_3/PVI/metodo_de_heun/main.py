@@ -1,12 +1,14 @@
 
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, getcontext
 import json
 import os
 
 from matplotlib import pyplot as plt
 from sympy import N, symbols, sympify
+
+getcontext().prec = 50
 
 class SolutionException(Exception):
     def __init__(self, *args):
@@ -34,13 +36,13 @@ class Point:
 
 @dataclass
 class InputData:
-    diff: Function
+    edo: Function
     first_point: Point
     h: Decimal
     interval: list[Decimal]
 
-    def __init__(self, diff: Function, first_point: Point, h: Decimal, interval: list[Decimal]):
-        self.diff = diff
+    def __init__(self, edo: Function, first_point: Point, h: Decimal, interval: list[Decimal]):
+        self.edo = edo
         self.first_point = first_point
         self.h = h
         self.interval = interval
@@ -58,8 +60,8 @@ def get_data_from_json(file_path: str):
     with open(f"{dir_path}/{file_path}", "r") as json_file:
         json_data = json.load(json_file)
 
-    if "differential" not in json_data:
-        raise KeyError("É necessário informar derivada")
+    if "edo" not in json_data:
+        raise KeyError("É necessário informar a equação diferencial ordinária (EDO)")
     if "firstPoint" not in json_data:
         raise KeyError("É necessário informar o ponto inicial")
     if "h" not in json_data:
@@ -67,11 +69,11 @@ def get_data_from_json(file_path: str):
     if "interval" not in json_data:
         raise KeyError("É necessário informar o intervalo")
     
-    if "expression" not in json_data["differential"]:
-        raise KeyError("É necessário informar a expressão da derivada")
-    if "variables" not in json_data["differential"]:
-        raise KeyError("É necessário informar a variável da expressão da derivada")
-    if len(json_data["differential"]["variables"]) > 2:
+    if "expression" not in json_data["edo"]:
+        raise KeyError("É necessário informar a expressão da equação diferencial ordinária (EDO)")
+    if "variables" not in json_data["edo"]:
+        raise KeyError("É necessário informar as variáveis da expressão da equação diferencial ordinária (EDO)")
+    if len(json_data["edo"]["variables"]) > 2:
         raise KeyError("É necessário informar no máximo 2 variáveis")
     if len(json_data["interval"]) != 2:
         raise KeyError("É necessário informar o inicio e fim do intervalo")
@@ -79,21 +81,21 @@ def get_data_from_json(file_path: str):
         raise KeyError("O início do intervalo deve ser anterior ao fim")
 
     return InputData(
-        Function(json_data["differential"]["expression"], json_data["differential"]["variables"]),
+        Function(json_data["edo"]["expression"], json_data["edo"]["variables"]),
         Point(json_data["firstPoint"]["x"], json_data["firstPoint"]["y"]),
         Decimal(json_data["h"]),
         json_data["interval"]
     )
 
-def predict_next_y(point: Point, differential: Function, h: Decimal):  
-    f_xy = solve_function(differential, [point.x, point.y])
+def predict_next_y(point: Point, function: Function, h: Decimal):  
+    f_xy = solve_function(function, [point.x, point.y])
     next_y = point.y + f_xy * h
 
     return next_y
 
-def get_next_y(point: Point, predicted_point: Point, differential: Function, h: Decimal):
-    f_xy = solve_function(differential, [point.x, point.y])
-    f_next_xy_predicted = solve_function(differential, [predicted_point.x, predicted_point.y])
+def get_next_y(point: Point, predicted_point: Point, function: Function, h: Decimal):
+    f_xy = solve_function(function, [point.x, point.y])
+    f_next_xy_predicted = solve_function(function, [predicted_point.x, predicted_point.y])
 
     next_y = point.y + ((f_xy + f_next_xy_predicted) / 2) * h
 
@@ -108,8 +110,8 @@ def solve(input_data: InputData):
     while(x < input_data.interval[1]):
         next_x = x + input_data.h
 
-        next_y_predicted = predict_next_y(point, input_data.diff, input_data.h)
-        next_y = get_next_y(point, Point(next_x, next_y_predicted), input_data.diff, input_data.h)
+        next_y_predicted = predict_next_y(point, input_data.edo, input_data.h)
+        next_y = get_next_y(point, Point(next_x, next_y_predicted), input_data.edo, input_data.h)
 
         point = Point(next_x, next_y)
         solutions.append(point)

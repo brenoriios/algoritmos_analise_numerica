@@ -6,7 +6,7 @@ import json
 import os
 
 from matplotlib import pyplot as plt
-from sympy import N, symbols, sympify
+from sympy import *
 
 getcontext().prec = 50
 
@@ -47,6 +47,7 @@ class InputData:
         self.h = h
         self.interval = interval
 
+
 def solve_function(function: Function, variable_values: list[Decimal]):
     symp_expression = sympify(function.expression)
     symp_variables = symbols(function.variables)
@@ -86,20 +87,62 @@ def get_data_from_json(file_path: str):
         json_data["interval"]
     )
 
-def get_next_y(point: Point, function: Function, h: Decimal):  
+def get_middle_next_y(point: Point, function: Function, h: Decimal):  
     f_xy = solve_function(function, [point.x, point.y])
-    next_y = point.y + f_xy * h
+    next_y = point.y + f_xy * (h / 2)
 
     return next_y
+
+def get_next_y(point: Point, middle_point: Point, function: Function, h: Decimal):
+    f_middle_xy = solve_function(function, [middle_point.x, middle_point.y])
+
+    next_y = point.y + f_middle_xy * h
+
+    return next_y
+
+def diff_y(function: Function):
+    diff_x = diff(function.expression, function.variables[0])
+    diff_y = diff(function.expression, function.variables[1])
+    expression = f'({diff_x}) + (({diff_y}) * ({function.expression}))'
+
+    return Function(expression, function.variables)
+
+def diff_yy(function: Function):
+    x = function.variables[0]
+    y = function.variables[1]
+
+    diff_x = diff(function.expression, x)
+    diff_y = diff(function.expression, y)
+
+    diff_xx = diff(diff_x, x)
+    diff_yy = diff(diff_y, y)
+    diff_xy = diff(diff_x, y)
+
+    expression = f'({diff_xx}) + (2 * ({diff_xy}) * ({function.expression})) + (({diff_yy}) * (({function.expression}) ** 2)) + (({diff_x}) * ({diff_y})) + ((({diff_y}) ** 2) * ({function.expression}))'
+
+    return Function(expression, function.variables)
 
 def solve(input_data: InputData):
     solutions = [ input_data.first_point ]
 
+    h = input_data.h
     x = input_data.first_point.x
     point = input_data.first_point
+
+    #TODO - Testar com função própria
+    edo_diff_y = diff_y(input_data.edo)
+    edo_diff_yy = diff_yy(input_data.edo)
+
     while(x < input_data.interval[1]):
-        next_y = get_next_y(point, input_data.edo, input_data.h)
-        next_x = x + input_data.h
+        sol_f_xy = solve_function(input_data.edo, [point.x, point.y])
+        sol_diff_y = solve_function(edo_diff_y, [point.x, point.y])
+        sol_diff_yy = solve_function(edo_diff_yy, [point.x, point.y])
+
+        next_x = x + h
+        part_1 = point.y + (sol_f_xy * h)
+        part_2 = (sol_diff_y / 2) * (h ** 2)
+        part_3 = (sol_diff_yy / 6) * (h ** 3)
+        next_y = part_1 + part_2 + part_3
 
         point = Point(next_x, next_y)
         solutions.append(point)
