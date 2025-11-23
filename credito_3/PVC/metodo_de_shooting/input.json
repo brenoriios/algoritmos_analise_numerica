@@ -1,0 +1,22 @@
+{
+    "edos": [
+        {
+            "expression": "z",
+            "relative_to": "T"
+        },
+        {
+            "expression": "0.01 * (T - 20)",
+            "relative_to": "z"
+        }
+    ],
+    "variables": ["T", "z"],
+    "initial_values": [40, 0],
+    "guesses": [10, 20],
+    "guesses_for": "z",
+    "target_value": 200,
+    "target_for": "T",
+    "control_variable": "x",
+    "h": 0.5,
+    "interval": [0, 18],
+    "method": "runge_kutta_4"
+}

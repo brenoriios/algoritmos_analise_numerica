@@ -1,12 +1,14 @@
 {
-    "edo": {
-        "expression": "(-2 * (x ** 3)) + (12 * (x ** 2)) - (20 * x) + 8.5",
-        "variables": ["x", "y"]
-    },
-    "firstPoint": {
-        "x": 0,
-        "y": 1
-    },
-    "h": 0.5,
-    "interval": [0, 4]
+    "edos": [
+        {
+            "expression": "2000 / (200 - t)",
+            "relative_to": "v"
+        }
+    ],
+    "variables": ["v", "t"],
+    "initial_values": [0, 0],
+    "control_variable": "t",
+    "h": 1,
+    "interval": [0, 50],
+    "analytical_solution": "2000 * log(200 / (200 - t))"
 }
