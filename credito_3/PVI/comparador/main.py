@@ -4,7 +4,6 @@ import json
 import os
 import shutil
 import sys
-import traceback
 
 from matplotlib import pyplot as plt
 from sympy import N, sympify
@@ -204,4 +203,3 @@ if __name__ == "__main__":
         print(f"Formato de entrada inválido. {e}")
     except Exception as e:
         print(f"Erro ao solucionar o problema: {e}")
-        traceback.print_exc()
