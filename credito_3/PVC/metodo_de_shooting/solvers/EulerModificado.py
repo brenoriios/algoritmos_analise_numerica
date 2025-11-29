@@ -28,11 +28,17 @@ class EulerModificado:
         return next_y
 
     def solve(self, edos: list[Function], variables: list[str], initial_values: list[Decimal], control_variable: str, h: Decimal, interval: list[Decimal]):
-        control = interval[0]
+        control = Decimal(interval[0])
         solutions = [dict(zip(variables, initial_values))]
 
-        while(control < interval[1]):
-            next_control = control + h
+        x0 = Decimal(interval[0])
+        xf = Decimal(interval[1])
+        n_steps = int((xf - x0) / h)
+
+
+        for i in range(1, n_steps + 1):
+            control = x0 + h * (i - 1)
+            next_control = x0 + h * i
             middle_control = control + (h / 2)
 
             temp_vars = { control_variable: next_control }
@@ -48,6 +54,5 @@ class EulerModificado:
                 temp_vars[edo.relative_to] = next_value
 
             solutions.append(temp_vars)
-            control = next_control
         
         return solutions

@@ -1,13 +1,12 @@
-from dataclasses import dataclass
 from decimal import Decimal
 from io import TextIOWrapper
 import json
 import os
+import shutil
 import sys
 import traceback
 
 from matplotlib import pyplot as plt
-import numpy as np
 from sympy import N, sympify
 
 from models.InputData import InputData
@@ -61,12 +60,8 @@ def validate_input(json_data):
     if json_data["interval"][1] < json_data["interval"][0]:
         raise KeyError("O início do intervalo deve ser anterior ao fim")
 
-def create_directory_if_not_exists(directory: str):
-    base = f"{os.path.dirname(os.path.realpath(__file__))}/output"
-    path = f"{base}/{directory}"
-
-    if not os.path.exists(base):
-        os.makedirs(base)
+def create_directory(directory: str):
+    path = f"{BASE_PATH}/{directory}"
 
     if not os.path.exists(path):
         os.makedirs(path)
@@ -79,7 +74,7 @@ def plt_save(control: str, relative_to: str, label: str):
     plt.grid(True)
     plt.legend()
 
-    directory = create_directory_if_not_exists("figures")
+    directory = create_directory("figures")
 
     plt.savefig(f"{directory}/{get_file_name(label, relative_to, control)}", dpi=300)
     plt.close()
@@ -111,16 +106,18 @@ def create_points(solution: list[dict[str, Decimal]], variable: str, control_sta
 def create_analytical_solution_points(input_data: InputData):
     points = []
 
-    x = input_data.interval[0]
-    while x <= input_data.interval[1]:
+    n = int(( Decimal(input_data.interval[1]) - Decimal(input_data.interval[0])) / input_data.h)
+
+    for i in range(n + 1):
+        x = Decimal(input_data.interval[0]) + input_data.h * i
         points.append(Point(x, Decimal(str(N(sympify(input_data.analytical_solution).evalf(subs={input_data.control_variable: x}))))))
-        x += input_data.h
     
     return points
 
 def plot_each(solution, analytical_solution, label: str, color: str, input_data: InputData):
     for edo in input_data.edos:
         if analytical_solution != None:
+            plot_points(analytical_solution, "Solução Analítica", "black", input_data.control_variable, edo.relative_to, single=True)
             plot_points(analytical_solution, "Solução Analítica", "black", input_data.control_variable, edo.relative_to, single=False)
 
         points = create_points(solution, edo.relative_to, input_data.interval[0], input_data.h)
@@ -131,7 +128,8 @@ def plot_each(solution, analytical_solution, label: str, color: str, input_data:
 def plot_compare(solutions, analytical_solution, input_data: InputData):
     for edo in input_data.edos:
         if analytical_solution != None:
-            plot_points(analytical_solution, "Solução Analítica", "black", input_data.control_variable, edo.relative_to)
+            plot_points(analytical_solution, "Solução Analítica", "black", input_data.control_variable, edo.relative_to, single=True)
+            plot_points(analytical_solution, "Solução Analítica", "black", input_data.control_variable, edo.relative_to, single=False)
 
         for method in MethodEnum:
             method_instance = method.value()
@@ -143,7 +141,7 @@ def plot_compare(solutions, analytical_solution, input_data: InputData):
         plt_save(input_data.control_variable, edo.relative_to, "comparativo")
 
 def get_out_file(filename: str):
-    directory = create_directory_if_not_exists("iteration_logs")
+    directory = create_directory("iteration_logs")
     file = open(f'{directory}/{filename}', 'w')
 
     return file
@@ -157,20 +155,31 @@ def write_solution(output_file: TextIOWrapper, solution_list: dict[str, Decimal]
             line_parts.append(f"{variable}: {solution_dict[variable]}")
 
         if (analytic_solution != None):
-            line_parts.append(f"Erro: {abs(analytic_solution[i].y) - solution_dict[relative_to]}")
+            line_parts.append(f"Erro: {abs(analytic_solution[i].y - solution_dict[relative_to])}")
 
         output_file.write(" | ".join(line_parts) + "\n")
-    
+
+def create_output_folder(path: str):
+    try:
+        shutil.rmtree(path)
+    except:
+        print("Diretório não existe, não é necessário excluir")
+
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 INPUT_PATH = "input.json"
 OUTPUT_FILENAME = 'output.txt'
+BASE_PATH = f"{os.path.dirname(os.path.realpath(__file__))}/output"
 
 if __name__ == "__main__":
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+    create_output_folder(BASE_PATH)
+
     try:
         input_data = get_data_from_json(INPUT_PATH)
-        analytical_solution = create_analytical_solution_points(input_data)
+        analytical_solution = create_analytical_solution_points(input_data) if input_data.analytical_solution != None else None
 
         if (input_data.method is None):
             solutions = {}
@@ -195,3 +204,4 @@ if __name__ == "__main__":
         print(f"Formato de entrada inválido. {e}")
     except Exception as e:
         print(f"Erro ao solucionar o problema: {e}")
+        traceback.print_exc()

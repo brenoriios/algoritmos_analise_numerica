@@ -27,14 +27,14 @@ class RungeKutta2:
         return next_y
 
     def solve(self, edos: list[Function], variables: list[str], initial_values: list[Decimal], control_variable: str, h: Decimal, interval: list[Decimal]):
-        control = interval[0]
-        solutions = [dict(zip(variables, initial_values)) | { control_variable: control }]
+        solutions = [dict(zip(variables, initial_values)) | { control_variable: Decimal(interval[0]) }]
+        n_steps = int((Decimal(interval[1]) - Decimal(interval[0])) / h)
 
-        while(control < interval[1]):
-            next_control = control + h
+        for i in range(1, n_steps + 1):
+            control = Decimal(interval[0]) + h * i
             k1_dict = { }
             k2_dict = { }
-            solution_dict = { control_variable: next_control }
+            solution_dict = { control_variable: control }
 
             last_values = solutions[-1]
             
@@ -51,6 +51,5 @@ class RungeKutta2:
                 solution_dict[edo.relative_to] = next_value
 
             solutions.append(solution_dict)
-            control = next_control
         
         return solutions
