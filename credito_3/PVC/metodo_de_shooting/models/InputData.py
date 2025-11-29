@@ -6,6 +6,7 @@ from models.Function import Function
 class InputData:
     edos: list[Function]
     variables: list[str]
+    solution_variable: str
     initial_values: list[Decimal]
     guesses: list[Decimal]
     guesses_for: str
@@ -15,3 +16,4 @@ class InputData:
     h: Decimal
     interval: list[Decimal]
     method: str
+    analytical_solution: str

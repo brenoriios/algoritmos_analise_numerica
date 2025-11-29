@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal
+from io import TextIOWrapper
 import json
 import os
 import random
@@ -8,6 +9,7 @@ import traceback
 
 from matplotlib import pyplot as plt
 import numpy as np
+from sympy import N, sympify
 
 from models.InputData import InputData
 from models.Function import Function
@@ -26,6 +28,7 @@ def get_data_from_json(file_path: str):
     return InputData(
         [Function(edo["expression"], edo["relative_to"]) for edo in json_data["edos"]],
         json_data["variables"],
+        json_data["solution_variable"],
         [Decimal(value) for value in json_data["initial_values"]],
         [Decimal(value) for value in json_data["guesses"]] if "guesses" in json_data else [random.randint(1, 20), random.randint(21, 40)],
         json_data["guesses_for"],
@@ -34,7 +37,8 @@ def get_data_from_json(file_path: str):
         json_data["control_variable"],
         Decimal(json_data["h"]),
         json_data["interval"],
-        json_data["method"] if "method" in json_data else None
+        json_data["method"] if "method" in json_data else None,
+        json_data["analytical_solution"] if "analytical_solution" in json_data else None
     )
 
 def validate_input(json_data):
@@ -42,6 +46,8 @@ def validate_input(json_data):
         raise KeyError("É necessário informar as equações diferenciais ordinárias (EDOs)")
     if "variables" not in json_data:
         raise KeyError("É necessário informar as variáveis do sistema")
+    if "solution_variable" not in json_data:
+        raise KeyError("É necessário informar para qual variável será a solução final")
     if "guesses_for" not in json_data:
         raise KeyError("É necessário informar para qual variável os 'chutes' são")
     if "target_value" not in json_data:
@@ -91,13 +97,12 @@ def plt_save(control: str, relative_to: str, label: str):
     plt.savefig(f"{directory}/{get_file_name(label, relative_to, control)}", dpi=300)
     plt.close()
 
-def plot_points(solution: list[Point], label: str, control: str, relative_to: str, single: bool = True):
+def plot_points(solution: list[Point], label: str, color: str, control: str, relative_to: str, single: bool = True):
     plt.plot(
         [p.x for p in solution],
         [p.y for p in solution],
-        color=tuple(np.random.rand(3) * 0.8),
+        color=color,
         linestyle="-",
-        marker="o" if len(solution) < 52 else "",
         label=label,
     )
 
@@ -115,10 +120,24 @@ def create_points(solution: list[dict[str, Decimal]], variable: str, control_sta
     
     return points
 
-def plot_each(solution, label: str, edos: list[Function], control_variable: str, start: Decimal, h: Decimal):
-    for edo in edos:
-        points = create_points(solution, edo.relative_to, start, h)
-        plot_points(points, label, control_variable, edo.relative_to)
+def create_analytical_solution_points(input_data: InputData):
+    points = []
+
+    x = input_data.interval[0]
+    while x <= Decimal(input_data.interval[1]) + input_data.h:
+        points.append(Point(x, Decimal(str(N(sympify(input_data.analytical_solution).evalf(subs={input_data.control_variable: x}))))))
+        x += input_data.h
+    
+    return points
+
+def plot_each(solution, analytical_solution, label: str, color: str, input_data: InputData):
+    if analytical_solution != None:
+        plot_points(analytical_solution, "Solução Analítica", "black", input_data.control_variable, input_data.solution_variable, single=False)
+
+    points = create_points(solution, input_data.solution_variable, input_data.interval[0], input_data.h)
+    plot_points(points, label, color, input_data.control_variable, input_data.solution_variable, single=False)
+
+    plt_save(input_data.control_variable, input_data.solution_variable, label)
 
 def get_out_file(filename: str):
     directory = create_directory_if_not_exists("")
@@ -126,11 +145,27 @@ def get_out_file(filename: str):
 
     return file
 
+def get_file_name(label: str, relative_to: str | None = None, control: str | None = None):
+    return f'{label.lower()} {(control + relative_to) if relative_to != None and control != None else ""}'.replace(' ', '_')
+
+def write_solution(output_file: TextIOWrapper, solution_list: dict[str, Decimal], relative_to: str, analytical_solution: list[Point] | None):
+    for i in range(len(solution_list)):
+        solution_dict = solution_list[i]
+        line_parts = []
+
+        for variable in solution_dict:
+            line_parts.append(f"{variable}: {solution_dict[variable]:.9f}")
+
+        if (analytical_solution != None):
+            line_parts.append(f"Erro: {abs(analytical_solution[i].y - solution_dict[relative_to]):.9f}")
+
+        output_file.write(" | ".join(line_parts) + "\n")
+
 def write_iteration(file, iteration, guess_for, guess, guess_solution, target_for, target_value):
     file.writelines([
         str(iteration),
         ' | ',
-        f'{guess_for}: {guess}',
+        f'{guess_for}: {guess:.9f}',
         ' | ',
         f'{target_for}: {guess_solution:.9f}',
         ' | ',
@@ -145,7 +180,12 @@ if __name__ == "__main__":
 
     try:
         input_data = get_data_from_json(INPUT_PATH)
-        output_file = get_out_file(OUTPUT_PATH)
+        output_file = get_out_file(get_file_name("guesses") + OUTPUT_PATH)
+        output_file_first_guess = get_out_file(get_file_name("first guess") + OUTPUT_PATH)
+        output_file_second_guess = get_out_file(get_file_name("second guess") + OUTPUT_PATH)
+        output_file_solution = get_out_file(get_file_name("solution") + OUTPUT_PATH)
+        
+        analytical_solution = create_analytical_solution_points(input_data) if input_data.analytical_solution != None else None
         
         first_guess = input_data.guesses[0]
         second_guess = input_data.guesses[1]
@@ -182,7 +222,13 @@ if __name__ == "__main__":
             current_guess = next_guess
             iteration += 1
             
-        plot_each(solution[-1], method_instance.label, input_data.edos, input_data.control_variable, input_data.interval[0], input_data.h)
+        plot_each(first_guess_solution, analytical_solution, method_instance.label + " Primeiro Chute", "red", input_data)
+        plot_each(second_guess_solution, analytical_solution, method_instance.label  + " Segundo Chute", "blue", input_data)
+        plot_each(solution[-1], analytical_solution, method_instance.label, "darkgreen", input_data)
+
+        write_solution(output_file_first_guess, first_guess_solution, input_data.solution_variable, analytical_solution)
+        write_solution(output_file_second_guess, second_guess_solution, input_data.solution_variable, analytical_solution)
+        write_solution(output_file_solution, solution[-1], input_data.solution_variable, analytical_solution)
 
     except KeyError as e:
         print(f"Formato de entrada inválido. {e}")

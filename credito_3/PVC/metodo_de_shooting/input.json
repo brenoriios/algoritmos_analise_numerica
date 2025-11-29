@@ -10,13 +10,15 @@
         }
     ],
     "variables": ["T", "z"],
+    "solution_variable": "T",
     "initial_values": [40, 0],
     "guesses": [10, 20],
     "guesses_for": "z",
     "target_value": 200,
     "target_for": "T",
     "control_variable": "x",
-    "h": 0.5,
-    "interval": [0, 18],
-    "method": "runge_kutta_4"
+    "h": 0.1,
+    "interval": [0, 10],
+    "method": "runge_kutta_4",
+    "analytical_solution": "(73.4523 * (2.71828 ** (0.1 * x))) - (53.4523 * (2.71828 ** (-0.1 * x))) + 20"
 }

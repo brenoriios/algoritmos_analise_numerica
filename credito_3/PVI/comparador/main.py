@@ -84,7 +84,6 @@ def plot_points(solution: list[Point], label: str, color: str, control: str, rel
         [p.y for p in solution],
         color=color,
         linestyle="-",
-        marker="" if len(solution) < 52 else "",
         label=label,
     )
 
@@ -105,7 +104,7 @@ def create_points(solution: list[dict[str, Decimal]], variable: str, control_sta
 def create_analytical_solution_points(input_data: InputData):
     points = []
 
-    n = int(( Decimal(input_data.interval[1]) - Decimal(input_data.interval[0])) / input_data.h)
+    n = int((Decimal(input_data.interval[1]) - Decimal(input_data.interval[0])) / input_data.h)
 
     for i in range(n + 1):
         x = Decimal(input_data.interval[0]) + input_data.h * i
@@ -151,10 +150,10 @@ def write_solution(output_file: TextIOWrapper, solution_list: dict[str, Decimal]
         line_parts = []
 
         for variable in solution_dict:
-            line_parts.append(f"{variable}: {solution_dict[variable]}")
+            line_parts.append(f"{variable}: {solution_dict[variable]:.9f}")
 
         if (analytic_solution != None):
-            line_parts.append(f"Erro: {abs(analytic_solution[i].y - solution_dict[relative_to])}")
+            line_parts.append(f"Erro: {abs(analytic_solution[i].y - solution_dict[relative_to]):.9f}")
 
         output_file.write(" | ".join(line_parts) + "\n")
 
