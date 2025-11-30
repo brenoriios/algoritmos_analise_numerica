@@ -47,7 +47,7 @@ class SerieTaylor:
         return next_value
 
     def solve(self, edos: list[Function], variables: list[str], initial_values: list[Decimal], control_variable: str, points: int, interval: list[Decimal]):
-        solutions = [dict(zip(variables, initial_values))]
+        solutions = [dict(zip(variables, initial_values)) | { control_variable: interval[0]}]
         diffs = {}
 
         #TODO - Testar com função própria
@@ -59,7 +59,7 @@ class SerieTaylor:
 
         h = Decimal((interval[1] - interval[0]) / points)
 
-        for i in range(points):
+        for i in range(1, points + 1):
             control = Decimal(interval[0]) + h * i
             temp_vars = { control_variable: control }
             last_values = solutions[-1]

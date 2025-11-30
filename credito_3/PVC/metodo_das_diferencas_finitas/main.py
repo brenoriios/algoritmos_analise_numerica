@@ -1,4 +1,5 @@
 from decimal import Decimal
+from io import TextIOWrapper
 import sys
 from matplotlib import pyplot as plt
 import json
@@ -11,6 +12,7 @@ from models.Point import Point
 from models.Coefficients import Coefficients
 from models.InputData import InputData
 from models.MatrixData import MatrixData
+from models.Solution import Solution
 from solvers.GaussElimination import GaussElimination
 
 
@@ -49,18 +51,18 @@ def validate_input(json_data):
 def get_file_name(label: str, relative_to: str | None = None, control: str | None = None):
     return f'{label.lower()} {(control + relative_to) if relative_to != None and control != None else ""}'.replace(' ', '_')
 
-def plt_save(control: str, relative_to: str, label: str):
-    plt.xlabel(control)
+def plt_save(relative_to: str):
+    plt.xlabel("x")
     plt.ylabel(relative_to)
     plt.grid(True)
     plt.legend()
 
     directory = create_directory_if_not_exists("figures")
 
-    plt.savefig(f"{directory}/{get_file_name(label, relative_to, control)}", dpi=300)
+    plt.savefig(f"{directory}/{get_file_name("solution", relative_to, "x")}", dpi=300)
     plt.close()
 
-def plot_points(solution: list[Point], label: str, color: str, control: str, relative_to: str, single: bool = True):
+def plot_points(solution: list[Point], label: str, color: str, relative_to: str, single: bool = True):
     plt.plot(
         [p.x for p in solution],
         [p.y for p in solution],
@@ -70,7 +72,7 @@ def plot_points(solution: list[Point], label: str, color: str, control: str, rel
     )
 
     if (single):
-        plt_save(control, relative_to, label)
+        plt_save(relative_to, label)
 
 def create_directory_if_not_exists(path: str):
     base = f"{os.path.dirname(os.path.realpath(__file__))}/output"
@@ -90,22 +92,29 @@ def get_out_file(filename: str):
 
     return file
 
-def create_points(solution: list[dict[str, Decimal]], variable: str, control_start: Decimal, h: Decimal):
-    points = []
-    for i in range(len(solution)):
-        point = Point(control_start + (h * i), solution[i][variable])
+def create_points(solution_values: list[Decimal], input_data: InputData):
+    points = [Point(0, input_data.initial_value)]
+    a = input_data.interval[0]
+    b = input_data.interval[1]
+    h = Decimal((b - a) / input_data.nodes)
+
+    for i in range(1, input_data.nodes):
+        point = Point(a + (h * i), solution_values[i])
         points.append(point)
     
+    points.append(Point(b, input_data.target_value))
+
     return points
 
 def create_analytical_solution_points(input_data: InputData):
     points = []
+    a = input_data.interval[0]
+    b = input_data.interval[1]
+    h = Decimal((b - a) / input_data.nodes)
 
-    n = int((Decimal(input_data.interval[1]) - Decimal(input_data.interval[0])) / input_data.h)
-
-    for i in range(n + 1):
-        x = Decimal(input_data.interval[0]) + input_data.h * i
-        points.append(Point(x, Decimal(str(N(sympify(input_data.analytical_solution).evalf(subs={input_data.control_variable: x}))))))
+    for i in range(input_data.nodes + 1):
+        x = Decimal(a) + h * i
+        points.append(Point(x, Decimal(str(N(sympify(input_data.analytical_solution).evalf(subs={"x": x}))))))
     
     return points
 
@@ -128,7 +137,7 @@ def print_system(matrix: list[list[Decimal]], results: list[Decimal], solution_v
 
     print()
 
-def print_linear_system(matrix: list[list[Decimal]], results: list[Decimal], solution_variable: str):
+def write_system(file: TextIOWrapper, matrix: list[list[Decimal]], results: list[Decimal], variables: list[str]):
     n = len(matrix)
     precision = 4
     col_width = len(str(round(max(np.concatenate(matrix).ravel().tolist() + results.tolist()), precision)))
@@ -139,10 +148,16 @@ def print_linear_system(matrix: list[list[Decimal]], results: list[Decimal], sol
             row_str += f"{matrix[i][j]:>{col_width}.{precision}f} "
         row_str += "]"
 
-        var_str = f"   {f"{solution_variable}{i}":>{len(str(n)) + 1}}   "
+        var_str = f"   {f"{variables[i]}":>{len(str(n)) + 1}}   "
         b_str = f"{results[i]:>{col_width}.{precision}f}"
 
-        print(f"{row_str}  {var_str} = {b_str}")
+        file.writelines([f"{row_str}  {var_str} = {b_str}", "\n"])
+    
+    file.write("\n")
+    
+def write_dict(file: TextIOWrapper, dictionary: dict):
+    for key, value in dictionary.items():
+        file.write(f'{key} = {value}\n')
 
 def extract_coefficients(function: str, solution_variable: str, h: Decimal):
     var_prev, var_curr, var_next = symbols(f'{solution_variable}0 {solution_variable} {solution_variable}2')
@@ -173,6 +188,8 @@ def solve(input_data: InputData):
     b = input_data.interval[1]
     h = (b - a) / (node_count + 1)
 
+    variables = [f"{solution_variable}{i + 1}" for i in range(node_count)]
+
     coefficients = extract_coefficients(function, solution_variable, h)
 
     system_matrix = np.zeros((node_count, node_count))
@@ -188,15 +205,14 @@ def solve(input_data: InputData):
     system_values[0]  -= coefficients.prev * initial_value
     system_values[-1] -= coefficients.next * target_value
 
-    solution = GaussElimination().solve(MatrixData(
+    system = MatrixData(
         system_matrix,
-        [f"{solution_variable}{i}" for i in range(len(system_matrix))],
+        variables,
         system_values
-    ))
+    )
+    solution = { f"{solution_variable}0": initial_value } | GaussElimination().solve(system) | { f"{solution_variable}{node_count + 1}": target_value }
 
-    print_linear_system(system_matrix, system_values, solution_variable)
-
-    return solution
+    return Solution(system, solution)
 
 INPUT_PATH = "input.json"
 OUTPUT_PATH = 'output.txt'
@@ -208,7 +224,15 @@ if __name__ == "__main__":
 
         solution = solve(input_data)
 
-        print(solution)
+        write_system(output_file, solution.system.matrix, solution.system.results, solution.system.variables)
+        write_dict(output_file, solution.solution)
+
+        analytical_solution = create_analytical_solution_points(input_data)
+        solution_points = create_points(list(solution.solution.values()), input_data)
+
+        plot_points(analytical_solution, "Solução Analítica", "black", input_data.solution_variable, single=False)
+        plot_points(solution_points, "Solução Numérica", "red", input_data.solution_variable, single=False)
+        plt_save(input_data.solution_variable)
 
     except KeyError as e:
         print(f"Formato de entrada inválido. {e}")

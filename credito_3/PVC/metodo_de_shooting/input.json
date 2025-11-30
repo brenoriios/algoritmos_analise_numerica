@@ -17,7 +17,7 @@
     "target_value": 200,
     "target_for": "T",
     "control_variable": "x",
-    "points": 18,
+    "points": 4,
     "interval": [0, 10],
     "method": "runge_kutta_4",
     "analytical_solution": "(73.4523 * (2.71828 ** (0.1 * x))) - (53.4523 * (2.71828 ** (-0.1 * x))) + 20"

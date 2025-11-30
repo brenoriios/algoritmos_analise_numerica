@@ -29,12 +29,12 @@ class EulerModificado:
 
     def solve(self, edos: list[Function], variables: list[str], initial_values: list[Decimal], control_variable: str, points: int, interval: list[Decimal]):
         control = Decimal(interval[0])
-        solutions = [dict(zip(variables, initial_values))]
+        solutions = [dict(zip(variables, initial_values)) | { control_variable: interval[0]}]
 
         x0 = Decimal(interval[0])
         h = Decimal((interval[1] - interval[0]) / points)
 
-        for i in range(points):
+        for i in range(1, points + 1):
             control = x0 + h * (i - 1)
             next_control = x0 + h * i
             middle_control = control + (h / 2)

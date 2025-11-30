@@ -75,7 +75,7 @@ class RungeKutta6:
         solutions = [dict(zip(variables, initial_values)) | { control_variable: Decimal(interval[0]) }]
         h = Decimal((interval[1] - interval[0]) / points)
 
-        for i in range(points):
+        for i in range(1, points + 1):
             control = Decimal(interval[0]) + h * i
             k1_dict = { }
             k2_dict = { }
