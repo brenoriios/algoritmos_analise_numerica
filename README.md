@@ -3,7 +3,7 @@ Repositório dedicado aos algoritmos implementados para a disciplina Análise N�
 
 ### Como Usar
 
-Os algoritmos estão implementados em Python e dependem da biblioteca de matemática simbólica `SymPy`. Para rodar os scripts, siga os passos abaixo:
+Os algoritmos estão implementados em Python e dependem da bibliotecas `SymPy`, `Matplotlib` e `Numpy`. Para rodar os scripts, siga os passos abaixo:
 
 1.  Clone o repositório para o seu ambiente local:
     ```bash
@@ -13,4 +13,12 @@ Os algoritmos estão implementados em Python e dependem da biblioteca de matemá
     ```bash
     pip install sympy
     ```
-3.  Navegue até a pasta do algoritmo desejado e execute o arquivo Python.
+3.  Instale a biblioteca `Matplotlib` usando o `pip`:
+    ```bash
+    pip install matplotlib
+    ```
+4.  Instale a biblioteca `Numpy` usando o `pip`:
+    ```bash
+    pip install numpy
+    ```
+5.  Navegue até a pasta do algoritmo desejado e execute o arquivo Python.
