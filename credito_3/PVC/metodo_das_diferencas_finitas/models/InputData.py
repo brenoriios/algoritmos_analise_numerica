@@ -4,16 +4,10 @@ from models.Function import Function
 
 @dataclass
 class InputData:
-    edos: list[Function]
-    variables: list[str]
+    edo: str
     solution_variable: str
-    initial_values: list[Decimal]
-    guesses: list[Decimal]
-    guesses_for: str
+    initial_value: Decimal
     target_value: Decimal
-    target_for: str
-    control_variable: str
-    points: int
     interval: list[Decimal]
-    method: str
+    nodes: int
     analytical_solution: str

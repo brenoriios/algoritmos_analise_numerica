@@ -173,9 +173,8 @@ BASE_PATH = f"{os.path.dirname(os.path.realpath(__file__))}/output"
 if __name__ == "__main__":
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    create_output_folder(BASE_PATH)
-
     try:
+        create_output_folder(BASE_PATH)
         input_data = get_data_from_json(INPUT_PATH)
         analytical_solution = create_analytical_solution_points(input_data) if input_data.analytical_solution != None else None
 

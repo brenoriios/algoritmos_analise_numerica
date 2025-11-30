@@ -1,0 +1,10 @@
+{
+    "edo": "0.01 * (T - 20)",
+    "solution_variable": "T",
+    "initial_value": 40,
+    "target_value": 200,
+    "control_variable": "x",
+    "interval": [0, 10],
+    "nodes": 4,
+    "analytical_solution": "(73.4523 * (2.71828 ** (0.1 * x))) - (53.4523 * (2.71828 ** (-0.1 * x))) + 20"
+}

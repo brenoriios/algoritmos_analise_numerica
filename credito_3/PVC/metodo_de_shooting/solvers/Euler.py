@@ -19,12 +19,11 @@ class Euler:
 
         return next_y
 
-    def solve(self, edos: list[Function], variables: list[str], initial_values: list[Decimal], control_variable: str, h: Decimal, interval: list[Decimal]):
+    def solve(self, edos: list[Function], variables: list[str], initial_values: list[Decimal], control_variable: str, points: int, interval: list[Decimal]):
         solutions = [dict(zip(variables, initial_values))]
-        
-        n_steps = int((Decimal(interval[1]) - Decimal(interval[0])) / h)
+        h = Decimal((interval[1] - interval[0]) / points)
 
-        for i in range(1, n_steps + 1):
+        for i in range(points):
             control = Decimal(interval[0]) + h * i
             temp_vars = { control_variable: control }
             last_values = solutions[-1]

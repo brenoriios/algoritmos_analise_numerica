@@ -4,11 +4,11 @@ from io import TextIOWrapper
 import json
 import os
 import random
+import shutil
 import sys
 import traceback
 
 from matplotlib import pyplot as plt
-import numpy as np
 from sympy import N, sympify
 
 from models.InputData import InputData
@@ -16,6 +16,7 @@ from models.Function import Function
 from models.Point import Point
 from enums.MethodEnum import MethodEnum
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def get_data_from_json(file_path: str):
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -35,7 +36,7 @@ def get_data_from_json(file_path: str):
         Decimal(json_data["target_value"]),
         json_data["target_for"],
         json_data["control_variable"],
-        Decimal(json_data["h"]),
+        json_data["points"],
         json_data["interval"],
         json_data["method"] if "method" in json_data else None,
         json_data["analytical_solution"] if "analytical_solution" in json_data else None
@@ -48,6 +49,8 @@ def validate_input(json_data):
         raise KeyError("É necessário informar as variáveis do sistema")
     if "solution_variable" not in json_data:
         raise KeyError("É necessário informar para qual variável será a solução final")
+    if "guesses" not in json_data:
+        raise KeyError("É necessário informar os chutes iniciais")
     if "guesses_for" not in json_data:
         raise KeyError("É necessário informar para qual variável os 'chutes' são")
     if "target_value" not in json_data:
@@ -56,8 +59,8 @@ def validate_input(json_data):
         raise KeyError("É necessário informar para qual variável é o valor alvo")
     if "control_variable" not in json_data:
         raise KeyError("É necessário informar qual o nome da variável incremental do sistema")
-    if "h" not in json_data:
-        raise KeyError("É necessário informar o valor de h")
+    if "points" not in json_data:
+        raise KeyError("É necessário informar o número de pontos internos")
     if "interval" not in json_data:
         raise KeyError("É necessário informar o intervalo")
     
@@ -67,6 +70,8 @@ def validate_input(json_data):
         if "relative_to" not in edo:
             raise KeyError("É necessário informar quem a equação diferencial ordinária (EDO) representa no sistema")
 
+    if len(json_data["variables"]) != len(json_data["initial_values"]):
+        raise KeyError("Todas as variáveis devem possuir um valor inicial")
     if len(json_data["guesses"]) != 2:
         raise KeyError("Informe apenas 2 'chutes'")
     if len(json_data["interval"]) != 2:
@@ -85,6 +90,15 @@ def create_directory_if_not_exists(path: str):
         os.makedirs(directory)
     
     return directory
+
+def create_output_folder(path: str):
+    try:
+        shutil.rmtree(path)
+    except:
+        print("Diretório não existe, não é necessário excluir")
+
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 def plt_save(control: str, relative_to: str, label: str):
     plt.xlabel(control)
@@ -109,9 +123,6 @@ def plot_points(solution: list[Point], label: str, color: str, control: str, rel
     if (single):
         plt_save(control, relative_to, label)
 
-def get_file_name(label: str, relative_to: str, control: str):
-    return f'{label.lower()} {control}{relative_to}'.replace(' ', '_')
-
 def create_points(solution: list[dict[str, Decimal]], variable: str, control_start: Decimal, h: Decimal):
     points = []
     for i in range(len(solution)):
@@ -122,11 +133,11 @@ def create_points(solution: list[dict[str, Decimal]], variable: str, control_sta
 
 def create_analytical_solution_points(input_data: InputData):
     points = []
+    h = Decimal((input_data.interval[1] - input_data.interval[0]) / input_data.points)
 
-    x = input_data.interval[0]
-    while x <= Decimal(input_data.interval[1]) + input_data.h:
+    for i in range(input_data.points + 1):
+        x = Decimal(input_data.interval[0]) + h * i
         points.append(Point(x, Decimal(str(N(sympify(input_data.analytical_solution).evalf(subs={input_data.control_variable: x}))))))
-        x += input_data.h
     
     return points
 
@@ -134,7 +145,9 @@ def plot_each(solution, analytical_solution, label: str, color: str, input_data:
     if analytical_solution != None:
         plot_points(analytical_solution, "Solução Analítica", "black", input_data.control_variable, input_data.solution_variable, single=False)
 
-    points = create_points(solution, input_data.solution_variable, input_data.interval[0], input_data.h)
+    h = Decimal((input_data.interval[1] - input_data.interval[0]) / input_data.points)
+
+    points = create_points(solution, input_data.solution_variable, input_data.interval[0], h)
     plot_points(points, label, color, input_data.control_variable, input_data.solution_variable, single=False)
 
     plt_save(input_data.control_variable, input_data.solution_variable, label)
@@ -174,11 +187,12 @@ def write_iteration(file, iteration, guess_for, guess, guess_solution, target_fo
 
 INPUT_PATH = "input.json"
 OUTPUT_PATH = 'output.txt'
+BASE_PATH = f"{os.path.dirname(os.path.realpath(__file__))}/output"
 
 if __name__ == "__main__":
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
     try:
+        create_output_folder(BASE_PATH)
+
         input_data = get_data_from_json(INPUT_PATH)
         output_file = get_out_file(get_file_name("guesses") + OUTPUT_PATH)
         output_file_first_guess = get_out_file(get_file_name("first guess") + OUTPUT_PATH)
@@ -195,10 +209,10 @@ if __name__ == "__main__":
         method_instance = MethodEnum[input_data.method].value()
 
         input_data.initial_values[input_data.variables.index(input_data.guesses_for)] = first_guess
-        first_guess_solution = method_instance.solve(input_data.edos, input_data.variables, input_data.initial_values, input_data.control_variable, input_data.h, input_data.interval)
+        first_guess_solution = method_instance.solve(input_data.edos, input_data.variables, input_data.initial_values, input_data.control_variable, input_data.points, input_data.interval)
         
         input_data.initial_values[input_data.variables.index(input_data.guesses_for)] = second_guess
-        second_guess_solution = method_instance.solve(input_data.edos, input_data.variables, input_data.initial_values, input_data.control_variable, input_data.h, input_data.interval)
+        second_guess_solution = method_instance.solve(input_data.edos, input_data.variables, input_data.initial_values, input_data.control_variable, input_data.points, input_data.interval)
         
         solution.append(first_guess_solution)
         solution.append(second_guess_solution)
@@ -213,7 +227,7 @@ if __name__ == "__main__":
             next_guess = last_guess + (input_data.target_value - solution[-2][-1][input_data.target_for]) * (current_guess - last_guess) / (solution[-1][-1][input_data.target_for] - solution[-2][-1][input_data.target_for])
             
             input_data.initial_values[input_data.variables.index(input_data.guesses_for)] = next_guess
-            next_guess_solution = method_instance.solve(input_data.edos, input_data.variables, input_data.initial_values, input_data.control_variable, input_data.h, input_data.interval)
+            next_guess_solution = method_instance.solve(input_data.edos, input_data.variables, input_data.initial_values, input_data.control_variable, input_data.points, input_data.interval)
             solution.append(next_guess_solution)
 
             write_iteration(output_file, iteration, input_data.guesses_for, next_guess, next_guess_solution[-1][input_data.target_for], input_data.target_for, input_data.target_value)
