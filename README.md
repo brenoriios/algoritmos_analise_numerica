@@ -21,4 +21,4 @@ Os algoritmos estão implementados em Python e dependem da bibliotecas `SymPy`, 
     ```bash
     pip install numpy
     ```
-5.  Navegue até a pasta do algoritmo desejado e execute o arquivo Python.
+5.  Navegue até a pasta do algoritmo desejado e execute o arquivo `main.py`.
