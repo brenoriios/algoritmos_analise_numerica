@@ -32,7 +32,7 @@ def get_data_from_json(file_path: str):
         Decimal(json_data["initial_value"]),
         Decimal(json_data["target_value"]),
         [Decimal(value) for value in json_data["interval"]],
-        json_data["nodes"],
+        json_data["points"],
         json_data["analytical_solution"] if "analytical_solution" in json_data else None
     )
 
@@ -45,7 +45,7 @@ def validate_input(json_data):
         raise KeyError("É necessário informar o valor alvo")
     if "interval" not in json_data:
         raise KeyError("É necessário informar o intervalo")
-    if "nodes" not in json_data:
+    if "points" not in json_data:
         raise KeyError("É necessário informar quantos pontos internos devem ser considerados")
 
 def get_file_name(label: str, relative_to: str | None = None, control: str | None = None):
@@ -96,9 +96,9 @@ def create_points(solution_values: list[Decimal], input_data: InputData):
     points = [Point(0, input_data.initial_value)]
     a = input_data.interval[0]
     b = input_data.interval[1]
-    h = Decimal((b - a) / input_data.nodes)
+    h = Decimal((b - a) / input_data.points)
 
-    for i in range(1, input_data.nodes):
+    for i in range(1, input_data.points):
         point = Point(a + (h * i), solution_values[i])
         points.append(point)
     
@@ -110,9 +110,9 @@ def create_analytical_solution_points(input_data: InputData):
     points = []
     a = input_data.interval[0]
     b = input_data.interval[1]
-    h = Decimal((b - a) / input_data.nodes)
+    h = Decimal((b - a) / input_data.points)
 
-    for i in range(input_data.nodes + 1):
+    for i in range(input_data.points + 1):
         x = Decimal(a) + h * i
         points.append(Point(x, Decimal(str(N(sympify(input_data.analytical_solution).evalf(subs={"x": x}))))))
     
@@ -183,7 +183,7 @@ def solve(input_data: InputData):
     solution_variable = input_data.solution_variable
     initial_value = input_data.initial_value
     target_value = input_data.target_value
-    node_count = input_data.nodes
+    node_count = input_data.points
     a = input_data.interval[0]
     b = input_data.interval[1]
     h = (b - a) / (node_count + 1)

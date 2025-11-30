@@ -5,6 +5,6 @@
     "target_value": 200,
     "control_variable": "x",
     "interval": [0, 10],
-    "nodes": 4,
+    "points": 4,
     "analytical_solution": "(73.4523 * (2.71828 ** (0.1 * x))) - (53.4523 * (2.71828 ** (-0.1 * x))) + 20"
 }

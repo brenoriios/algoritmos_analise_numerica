@@ -9,5 +9,5 @@ class InputData:
     initial_value: Decimal
     target_value: Decimal
     interval: list[Decimal]
-    nodes: int
+    points: int
     analytical_solution: str
