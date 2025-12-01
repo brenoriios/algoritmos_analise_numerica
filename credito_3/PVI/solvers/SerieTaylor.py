@@ -50,7 +50,6 @@ class SerieTaylor:
         solutions = [dict(zip(variables, initial_values))]
         diffs = {}
 
-        #TODO - Testar com função própria
         for edo in edos:
             diffs[edo.relative_to] = {}
             
