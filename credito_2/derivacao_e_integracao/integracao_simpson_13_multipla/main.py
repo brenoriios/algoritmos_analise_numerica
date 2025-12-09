@@ -39,9 +39,6 @@ def get_data_from_json(file_path: str):
     if "points" not in json_data:
         raise KeyError("É necessário informar os pontos considerados")
 
-    if (len(json_data["points"]["x"]) - 1) % 2 != 0:
-        raise SolutionException("Para a regra de Simpson de 1/3 múltipla é necessário que seja possível formar apenas conjuntos de 3 pontos")
-
     return InputData(
         [Point(Decimal(x), Decimal(y)) for x, y in zip(json_data["points"]["x"], json_data["points"]["y"])]
     )
